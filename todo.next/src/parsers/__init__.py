@@ -2,6 +2,7 @@ import re
 
 re_prio = re.compile("^\(([A-Z])\)", re.UNICODE)
 re_context = re.compile("(@.*?)(?:$|\s)", re.UNICODE)
+re_project = re.compile("(\+.*?)(?:$|\s)", re.UNICODE)
 re_properties = re.compile("(\w*?):(.*?)(?:$|\s)", re.UNICODE)
 
 def parse_prio(item):
@@ -11,6 +12,15 @@ def parse_prio(item):
         item["priority"] = match.group(1)
     return item
 
+def parse_project(item):
+    text = item["raw"]
+    field = []
+    for match in re_project.findall(text):
+        field.append(match)
+    if len(field) > 0:
+        item["projects"] = field
+    return item
+    
 def parse_context(item):
     text = item["raw"]
     field = []
@@ -32,7 +42,7 @@ def parse_properties(item):
     text = item["raw"]
     props = {}
     for match in re_properties.findall(text):
-        props[match[0]] = match[1]
+        props[match[0].lower()] = match[1]
     if len(props) > 0 :
         item["properties"] = props
     return item
