@@ -5,45 +5,46 @@
 """
 from __future__ import print_function
 from colorama import init, deinit, Fore, Back, Style #@UnresolvedImport
-from todolist import TodoList
+from todolist import TodoList, to_date
+from operator import attrgetter
 import datetime
 import argparse
 
 def color_item_renderer(item):
-    text = item["raw"]
-    for tohi in item.get("projects", []):
+    text = item.text
+    for tohi in item.projects:
         text = text.replace(tohi, Back.MAGENTA + tohi + Back.BLACK) #@UndefinedVariable
-    for tohi in item.get("contexts", []):
+    for tohi in item.contexts:
         text = text.replace(tohi, Back.RED + tohi + Back.BLACK) #@UndefinedVariable
-    for tohi in item.get("delegates", {}).get("to", []):
+    for tohi in item.delegated_to:
         text = text.replace(">>" + tohi, Back.YELLOW + ">>" + tohi + Back.BLACK) #@UndefinedVariable
-    for tohi in item.get("delegates", {}).get("from", []):
+    for tohi in item.delegated_from:
         text = text.replace("<<" + tohi, Back.YELLOW + "<<" + tohi + Back.BLACK) #@UndefinedVariable
 
     prefix = ""
     now = datetime.datetime.now()
-    if item.get("priority", None):
+    if item.priority:
         prefix = Fore.WHITE + Style.BRIGHT #@UndefinedVariable
-    if item["done"]:
-        prefix = Fore.GREEN + Style.NORMAL #@UndefinedVariable
-    due = item.get("properties", {}).get("due", None)
-    if due:
+    if item.due_date:
         # due date is set
-        if datetime.datetime(year=due.year, month=due.month, day=due.day) == datetime.datetime(year=now.year, month=now.month, day=now.day):
-            if due.hour == 0 and due.minute == 0: 
+        if datetime.datetime(year=item.due_date.year, month=item.due_date.month, day=item.due_date.day) == \
+            datetime.datetime(year=now.year, month=now.month, day=now.day):
+            if (item.due_date.hour, item.due_date.minute) == (0, 0): 
                 # item is due today on general day
                 prefix = Fore.YELLOW + Style.BRIGHT #@UndefinedVariable
-            elif due > now:
+            elif item.due_date > now:
                 # due date is today but will be later on
                 prefix = Fore.YELLOW + Style.BRIGHT #@UndefinedVariable
             else:
                 # due date has already happened today
                 prefix = Fore.RED + Style.BRIGHT #@UndefinedVariable
-        elif due < now:
+        elif item.due_date < now:
             prefix = Fore.RED + Style.BRIGHT #@UndefinedVariable
-    if item.get("reportitem", False):
+    if item.is_report:
         prefix = Fore.CYAN + Style.DIM #@UndefinedVariable
-    listitem = "[% 3d] %s" % (item["nr"], text)
+    if item.done:
+        prefix = Fore.GREEN + Style.NORMAL #@UndefinedVariable
+    listitem = "[% 3d] %s" % (item.nr, text)
     return prefix + listitem + Style.RESET_ALL #@UndefinedVariable
     
 if __name__ == '__main__':
@@ -107,7 +108,7 @@ if __name__ == '__main__':
     
     if args.action == "list":
         for item in tl.list_items():
-            if not args.search_string or args.search_string in item["raw"]:
+            if not args.search_string or args.search_string in item.text:
                 print(color_item_renderer(item))
                 #print(item)
     elif args.action == "add":
@@ -138,8 +139,23 @@ if __name__ == '__main__':
         tl.reopen(item)
         print(color_item_renderer(item))
     elif args.action == "agenda":
-        # TODO: write me
-        pass
+        agenda_items = []
+        # if not set, get agenda for today
+        if not args.date:
+            args.date = datetime.datetime.now()
+        else:
+            args.date = to_date(args.date)
+            if isinstance(args.date, basestring):
+                print("Could not parse date argument '%s'" % args.date)
+                quit(-1)
+        for item in tl.list_items():
+            comp_date = item.due_date
+            if comp_date:
+                if (args.date.year, args.date.month, args.date.day) == (comp_date.year, comp_date.month, comp_date.day):
+                    agenda_items.append(item)
+        agenda_items.sort(key=attrgetter("due_date"))
+        for item in agenda_items:
+            print(color_item_renderer(item))
     # if we have changed something, we need to write these changes to file again
     if tl.dirty:
         print("Would write now...")
