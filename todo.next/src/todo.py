@@ -5,7 +5,8 @@
 """
 from __future__ import print_function
 from colorama import init, deinit, Fore, Back, Style #@UnresolvedImport
-from todolist import TodoList, to_date
+from date_trans import to_date
+from todolist import TodoList
 from operator import attrgetter
 import datetime
 import argparse
