@@ -4,7 +4,7 @@
 .. moduleauthor:: Philipp Scholl
 """
 from __future__ import print_function
-from colorama import init, deinit, Fore, Back, Style
+from colorama import init, deinit, Fore, Back, Style #@UnresolvedImport
 from todolist import TodoList
 import datetime
 import argparse
@@ -12,21 +12,39 @@ import argparse
 def color_item_renderer(item):
     text = item["raw"]
     for tohi in item.get("projects", []):
-        text = text.replace(tohi, Back.MAGENTA + tohi + Back.BLACK)
+        text = text.replace(tohi, Back.MAGENTA + tohi + Back.BLACK) #@UndefinedVariable
     for tohi in item.get("contexts", []):
-        text = text.replace(tohi, Back.RED + tohi + Back.BLACK)
+        text = text.replace(tohi, Back.RED + tohi + Back.BLACK) #@UndefinedVariable
+    for tohi in item.get("delegates", {}).get("to", []):
+        text = text.replace(">>" + tohi, Back.YELLOW + ">>" + tohi + Back.BLACK) #@UndefinedVariable
+    for tohi in item.get("delegates", {}).get("from", []):
+        text = text.replace("<<" + tohi, Back.YELLOW + "<<" + tohi + Back.BLACK) #@UndefinedVariable
 
     prefix = ""
+    now = datetime.datetime.now()
     if item.get("priority", None):
-        prefix = Fore.WHITE + Style.BRIGHT 
+        prefix = Fore.WHITE + Style.BRIGHT #@UndefinedVariable
     if item["done"]:
-        prefix = Fore.GREEN + Style.NORMAL
-    if item.get("properties", {}).get("due", datetime.datetime.now()) < datetime.datetime.now():
-        prefix = Fore.RED + Style.BRIGHT
+        prefix = Fore.GREEN + Style.NORMAL #@UndefinedVariable
+    due = item.get("properties", {}).get("due", None)
+    if due:
+        # due date is set
+        if datetime.datetime(year=due.year, month=due.month, day=due.day) == datetime.datetime(year=now.year, month=now.month, day=now.day):
+            if due.hour == 0 and due.minute == 0: 
+                # item is due today on general day
+                prefix = Fore.YELLOW + Style.BRIGHT #@UndefinedVariable
+            elif due > now:
+                # due date is today but will be later on
+                prefix = Fore.YELLOW + Style.BRIGHT #@UndefinedVariable
+            else:
+                # due date has already happened today
+                prefix = Fore.RED + Style.BRIGHT #@UndefinedVariable
+        elif due < now:
+            prefix = Fore.RED + Style.BRIGHT #@UndefinedVariable
     if item.get("reportitem", False):
-        prefix = Fore.CYAN + Style.DIM
-    listitem = "[% 3d] %s" % (nr, text)
-    return prefix + listitem + Style.RESET_ALL
+        prefix = Fore.CYAN + Style.DIM #@UndefinedVariable
+    listitem = "[% 3d] %s" % (item["nr"], text)
+    return prefix + listitem + Style.RESET_ALL #@UndefinedVariable
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -45,9 +63,42 @@ if __name__ == '__main__':
     parse_del.add_argument("item", type=int, help="the index number of the item to remove")
     parse_del.add_argument("--force", action="store_true")
     
-    parse_list = subparser.add_parser("list", help="lists all items that match the given expression")
+    parse_list = subparser.add_parser("list", help="lists all items that match the given expression") #, aliases=["ls"]
     parse_list.add_argument("search_string", type=str, help="a search string", nargs="?")
     
+    parse_agenda = subparser.add_parser("agenda", help="prints the agenda for a given date")
+    parse_agenda.add_argument("date", type=str, help="either a date or a string like 'tomorrow', default 'today'", nargs="?")
+    
+    parse_done = subparser.add_parser("done", help="sets a todo item to 'done' status")
+    parse_done.add_argument("item", type=int, help="the index number of the item to set to 'done'")
+    
+    parse_reopen = subparser.add_parser("reopen", help="reopens a todo item already done")
+    parse_reopen.add_argument("item", type=int, help="the index number of the item to reopen")
+    
+    parse_edit = subparser.add_parser("edit", help="allows editing a todo item", description="This action will open an editor. If you're done editing, save the file and close the editor.")
+    parse_edit.add_argument("item", type=int, help="the index number of the item to edit")
+    
+    parse_delay = subparser.add_parser("delay", help="delays todo item's due date")
+    parse_delay.add_argument("date", type=str, help="either a date or a string like 'tomorrow', default '1d' (delays for 1 day)", nargs="?")
+    
+    parse_delegated = subparser.add_parser("delegated", help="shows all delegated items that are still open")
+    parse_agenda.add_argument("delegate", type=str, help="for filtering the name used for denoting a delegate", nargs="?")
+    
+    parse_mytasks = subparser.add_parser("tasks", help="shows all items that have been assigned to you")
+    parse_agenda.add_argument("search_string", type=str, help="a search string", nargs="?")
+    
+    parse_overdue = subparser.add_parser("overdue", help="shows all items that are overdue")
+    
+    parse_archive = subparser.add_parser("archive", help="archives all non-current todo items and removes them from todo.txt")
+    parse_archive.add_argument("to_file", type=str, help="the file where all archived todo items are appended")
+    
+    parse_report = subparser.add_parser("report", help="shows a report of all done and report items")
+    parse_report.add_argument("date", type=str, help="either a date or a string like 'tomorrow', default 'today'", nargs="?")
+    
+    parse_clean = subparser.add_parser("clean", help="removes all outdated todo items from the todo.txt")
+    
+    parse_open = subparser.add_parser("open", help="opens either an URL or a file that is attached to the todo item")
+    parse_open.add_argument("item", type=int, help="the index number of the item that has either an URL or file attached")
     
     args = parser.parse_args()
     print(args)
@@ -55,21 +106,42 @@ if __name__ == '__main__':
     tl = TodoList("todo.txt")
     
     if args.action == "list":
-        for nr, item in tl.list_items():
+        for item in tl.list_items():
             if not args.search_string or args.search_string in item["raw"]:
                 print(color_item_renderer(item))
+                #print(item)
     elif args.action == "add":
         item = tl.add_item(args.text)
     elif args.action == "remove":
-        item = tl.find_item(args.item)
+        item = tl.get_item_by_index(args.item)
         if not args.force:
             print("Do you really want to remove the following item:")
             print(color_item_renderer(item))
             print("Please enter y/N")
-            # TODO: check
-            tl.remove_item(args.item)
+            answer = raw_input().lower().strip()
+            if answer == "y":
+                tl.remove_item(item)
+            else:
+                print("Removing aborted")
         else:
-            tl.remove_item(args.item)
+            tl.remove_item(item)
+    elif args.action == "done":
+        item = tl.get_item_by_index(args.item)
+        print("Marked following todo item to 'done':")
+        print(color_item_renderer(item))
+        tl.set_to_done(item)
+        print(color_item_renderer(item))
+    elif args.action == "reopen":
+        item = tl.get_item_by_index(args.item)
+        print("Setting the following todo item to open again:")
+        print(color_item_renderer(item))
+        tl.reopen(item)
+        print(color_item_renderer(item))
+    elif args.action == "agenda":
+        # TODO: write me
+        pass
+    # if we have changed something, we need to write these changes to file again
     if tl.dirty:
+        print("Would write now...")
         tl.write()
     deinit()

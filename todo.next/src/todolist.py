@@ -24,7 +24,7 @@ class TodoList(object):
                 if not line:
                     continue
                 self.append(line)
-                
+        self.sort_list()
                 
     def parse(self, item):
         parse_fns = dir(parsers)
@@ -34,6 +34,8 @@ class TodoList(object):
     
     def write(self):
         with codecs.open(self.todofile, "w", "utf-8") as fp:
+            if not self.sorted:
+                self.sort_list()
             for item in self.todolist:
                 fp.write("%s\n" % item["raw"])
     
@@ -49,6 +51,7 @@ class TodoList(object):
         # fix dates on properties
         self.fix_properties(item)
         self.todolist.append(item)
+        self.sorted = False
         return item
 
     def add_item(self, item_str):
@@ -60,14 +63,55 @@ class TodoList(object):
         self.dirty = True
         return item
 
-    def find_item(self, item_nr):
-        # TODO: return requested item
-        pass
-        
-    def remove_item(self, item_nr):
-        # TODO: delete item
+    def set_to_done(self, item):
+        item["done"] = True
+        # is ``done`` property already in here
+        props = item.get("properties", None)
+        if not props:
+            item["properties"] = {}
+        now = datetime.datetime.now()
+        props["done"] = now
+        done = self.from_date(now)
+        re_replace_prop = re.compile("(?:^|\s)(done:.*?)(?:$|\s)", re.UNICODE)
+        matches = re_replace_prop.findall(item["raw"])
+        if len(matches) > 0:
+            # only replace the first occurrence
+            item["raw"] = item["raw"].replace(matches[0], "done:" + done)
+            # and remove all further occurrences
+            for _match in matches [1:]:
+                item["raw"] = item["raw"].replace(matches[0], "")
+        else:
+            item["raw"] = item["raw"].strip() + " " + "done:" + done
+        if not item["raw"].startswith("x "):
+            item["raw"] = "x " + item["raw"]
+        self.sorted = False
         self.dirty = True
+        return item
 
+    def reopen(self, item):
+        item["done"] = False
+        # remove "x " prefix
+        if item["raw"].startswith("x "):
+            item["raw"] = item["raw"][2:]
+        self.dirty = True
+        self.sorted = False
+        return item
+    
+    def get_item_by_index(self, item_nr):
+        item = self.todolist[item_nr]
+        item["nr"] = int(item_nr)
+        return item
+        
+    def remove_item(self, item):
+        self.todolist.remove(item)
+        self.dirty = True
+    
+    def from_date(self, date):
+        if isinstance(date, basestring):
+            return date
+        else:
+            return date.strftime("%Y-%m-%d_%H:%M")
+    
     def to_date(self, date_string):
         date_string = date_string.strip().lower()
         now = datetime.datetime.now()
@@ -91,11 +135,18 @@ class TodoList(object):
                     month, day = day, month
                 result = datetime.datetime(now.year, month, day)
                 if now > result:
-                    return result + datetime.timedelta(days=365)
-        # show that we could not interpret the date string
-        return "?" + date_string
-
-        
+                    # timedelta has no year!
+                    result = datetime.datetime(now.year + 1, month, day)
+                return result
+            else:
+                # show that we could not interpret the date string
+                if not date_string.startswith("?"):
+                    result =  "?" + date_string.replace(" ", "_")
+                else:
+                    result = date_string.replace(" ", "_")
+                return result
+    
+    
     def fix_properties(self, item):
         props = item.get("properties", {})
         date_props = ["due", "done"]
@@ -103,7 +154,7 @@ class TodoList(object):
         for prop_name in date_props:
             if prop_name in props:
                 repl_date = self.to_date(props[prop_name])
-                item["raw"] = item["raw"].replace(props[prop_name], str(repl_date).replace(" ", "_"))
+                item["raw"] = item["raw"].replace(props[prop_name], self.from_date(repl_date))
                 props[prop_name] = repl_date
                 
     
@@ -134,11 +185,18 @@ class TodoList(object):
             return -1
         # they are practically equal
         return 0
-
     
-    def list_items(self, sorting_fn = None):
+    
+    def sort_list(self, sorting_fn = None):
         if sorting_fn == None:
             sorting_fn = self.default_sort
         self.todolist.sort(cmp=sorting_fn)
+        self.sorted = True
+    
+    
+    def list_items(self):
+        if not self.sorted:
+            self.sort_list()
         for nr, item in enumerate(self.todolist):
-            yield (nr, item)
+            item["nr"] = nr
+            yield item
