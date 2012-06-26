@@ -21,6 +21,7 @@ class TodoItem(object):
         self.projects, self.contexts = [], []
         self.done = None
         self.is_report = None
+        self.nr = -1
         # find all special syntax
         self.parse()
         # fix dates on properties
