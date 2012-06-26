@@ -79,6 +79,13 @@ class TodoList(object):
         self.dirty = True
     
     
+    def reparse_item(self, item):
+        item.parse()
+        item.fix_properties()
+        self.sorted = False
+        self.dirty = True
+        
+        
     def sort_key_by(self, property_name, default):
         def inner_getter(item):
             if not property_name in item.properties:

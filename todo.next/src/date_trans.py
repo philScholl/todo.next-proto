@@ -1,34 +1,54 @@
 """
-:mod:``
-~~~~~~~~~~~~~~~~~~~~~
+:mod:`date_trans`
+~~~~~~~~~~~~~~~~~
 
-
+Provides simple date transformations and date parsing for todo.next application.
 
 .. created: 25.06.2012
-.. moduleauthor:: Phil <Phil@>
+.. moduleauthor:: Philipp Scholl <Phil@>
 """
 from __future__ import print_function
 import datetime, re
-from dateutil.parser import parse
+# if dateutil is installed, this makes everything a lot easier
+USE_DATEUTIL = False
+try:
+    from dateutil.parser import parse
+    USE_DATEUTIL = True
+except ImportError:
+    pass
 
 re_partial_date = re.compile("(\d{1,2})\.(\d{1,2})\.", re.UNICODE)
 
-def to_date(date_string):
+def to_date(date_string, reference_date = None):
+    """ parses a :class:`datetime` object from a given string
+    
+    :param date_string: a given string representing a (relative) date
+    :type date_string: :class:`str`
+    :param reference_date: a given date that serves as the reference point for relative date calculations. If ``None``, today's date 00:00am is used.
+    :type reference_date: a :class:`datetime` object
+    :return: :class:`datetime` object representing the desired date, or if not parsable, the given date string prepended with ``?``
+    :rtype: :class:`datetime` or :class:`str`
+    """
     if not date_string:
         return None
-    date_string = date_string.strip().lower()
     now = datetime.datetime.now()
+    if not reference_date:
+        reference_date = datetime.datetime(now.year, now.month, now.day)
+    date_string = date_string.strip().lower()
     if date_string in ["today", "td", ""]:
-        return datetime.datetime(now.year, now.month, now.day)
+        return reference_date
     elif date_string in ["tomorrow", "tm"]:
-        return datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1)
+        return reference_date + datetime.timedelta(days=1)
     # clean underscores
     if "_" in date_string:
         date_string = date_string.replace("_", " ")
     try:
-        # try to delegate parsing task to dateutil
-        default = datetime.datetime(now.year, now.month, now.day)
-        return parse(date_string, default=default)
+        if USE_DATEUTIL:
+            # try to delegate parsing task to dateutil
+            return parse(date_string, default=reference_date)
+        else:
+            # FIXME: fix format string
+            return datetime.datetime.strptime(date_string, "format")
     except:
         # date of form xx.xx.
         match = re_partial_date.match(date_string)
@@ -38,6 +58,7 @@ def to_date(date_string):
                 month, day = day, month
             result = datetime.datetime(now.year, month, day)
             if now > result:
+                # FIXME: check for leap year
                 # timedelta has no year!
                 result = datetime.datetime(now.year + 1, month, day)
             return result
