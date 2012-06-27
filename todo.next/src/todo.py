@@ -31,7 +31,7 @@ if __name__ == '__main__':
             todo_filename = sys.argv[1]
         todo_filename = os.path.abspath(todo_filename)
         # ask for confirmation
-        answer = raw_input("Do you want to create %s (y/N)?").lower().strip()
+        answer = raw_input("Do you want to create %s (y/N)?" % todo_filename).lower().strip()
         if answer != "y":
             todo_filename = os.path.abspath(raw_input("Please enter the path/filename of your todo file: ").strip())
         print("* Trying to create a new config file at %s..." % config_file)
@@ -46,7 +46,7 @@ if __name__ == '__main__':
         else:
             print("* Creating todo file %s" % todo_filename)
             with codecs.open(todo_filename, "w", "utf-8") as fp:
-                fp.write("(A) Check out ")
+                fp.write("(A) Check out https://github.com/philScholl/todo.next-proto")
         quit(0)
         
     parser = argparse.ArgumentParser(
@@ -114,9 +114,14 @@ if __name__ == '__main__':
     parse_context.add_argument("name", type=str, help="the name of the context to display", nargs="?")
     parse_context.add_argument("--all", action="store_true", help="if given, also the done todo items are displayed")
     
-    args = parser.parse_args()
-    print(args)
+    parse_config = subparser.add_parser("config", help="open configuration in editor")
     
+    args = parser.parse_args()
+    # set additional data that could be interesting to actions
+    args.config = config
+    args.config_file = config_file
+    args.todo_file = todo_filename
+        
     tl = TodoList(todo_filename)
 
     # call the respective command

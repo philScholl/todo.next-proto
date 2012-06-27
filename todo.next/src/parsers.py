@@ -12,7 +12,7 @@ re_prio = re.compile("^\(([A-Z])\)", re.UNICODE)
 re_context = re.compile("(@.*?)(?:$|\s)", re.UNICODE)
 re_project = re.compile("(\+.*?)(?:$|\s)", re.UNICODE)
 re_properties = re.compile("(\w*?):(.*?)(?:$|\s)", re.UNICODE)
-re_delegates = re.compile("([(?:<<)(?:>>)]{2})(.*?)(?:$|\s)", re.UNICODE)
+re_delegates = re.compile("(<{2}|>{2})(.*?)(?:$|\s)", re.UNICODE)
 
 def parse_prio(item):
     match = re_prio.match(item.text)
@@ -32,7 +32,7 @@ def parse_delegates(item):
                 item.delegated_from.append(deleg)
             else:
                 # some error
-                print(mode, deleg, "failed")
+                raise Exception("Parsing failed.")
     return item
 
 def parse_project(item):

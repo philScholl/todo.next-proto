@@ -10,9 +10,15 @@ version of todo.next.
 """
 from __future__ import print_function
 
-from todoitem import TodoItem
 from colorama import init, deinit, Fore, Back, Style #@UnresolvedImport
 import tempfile, subprocess, os, codecs, time, sys
+
+def open_editor(filename):
+    if sys.platform == "win32":
+        return subprocess.call([filename,], shell=True)
+    elif sys.platform == "linux2":
+        editor = os.getenv("EDITOR", "emacs")
+        return os.spawnl(os.P_WAIT, editor, editor, tmpfile) #@UndefinedVariable
 
 
 def get_editor_input(initial_text):
@@ -40,7 +46,7 @@ def get_editor_input(initial_text):
             # to check whether the file has changed, we get the last modified time
             created = os.path.getmtime(tmpfile)
             # call the default editor
-            subprocess.call([tmpfile,], shell=True)
+            open_editor(tmpfile)
             
             slept = 0.0
             WAIT_TIME = 0.2
@@ -56,8 +62,7 @@ def get_editor_input(initial_text):
                 result = fp.read()
         elif sys.platform == "linux2":
             # runs only on linux
-            editor = os.getenv("EDITOR", "emacs")
-            handle = os.spawnl(os.P_WAIT, editor, editor, tmpfile) #@UndefinedVariable
+            handle = open_editor(tmpfile)
             if handle != 0:
                 # an error occurred
                 raise Exception("An error occurred while opening an editor.")

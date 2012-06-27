@@ -8,12 +8,12 @@ Contains all actions that can be executed by ``todo.next``
 .. moduleauthor:: Phil <Phil@>
 """
 from __future__ import print_function
-from cli_helpers import ColorRenderer, get_editor_input
+from cli_helpers import ColorRenderer, get_editor_input, open_editor
 from date_trans import to_date
 
 import collections, datetime
 from operator import attrgetter
-
+from itertools import groupby
 
 def cmd_list(tl, args):
     """lists all todo items according to a search query
@@ -53,9 +53,7 @@ def cmd_remove(tl, args):
     """removes todo items from the list
     """
     with ColorRenderer() as cr:
-        item_list = []
-        for item_nr in args.items:
-            item_list.append(tl.get_item_by_index(item_nr))
+        item_list = [tl.get_item_by_index(item_nr) for item_nr in args.items]
         if not args.force:
             print("Do you really want to remove the following item(s):")
             for item in item_list:
@@ -75,9 +73,7 @@ def cmd_done(tl, args):
     """set the given todo items' status to ``done``
     """
     with ColorRenderer() as cr:
-        item_list = []
-        for item_nr in args.items:
-            item_list.append(tl.get_item_by_index(item_nr))
+        item_list = [tl.get_item_by_index(item_nr) for item_nr in args.items]
         print("Marked following todo items as 'done':")
         for item in item_list:
             tl.set_to_done(item)
@@ -88,9 +84,7 @@ def cmd_reopen(tl, args):
     """removes the ``done`` status flag from the given todo items
     """
     with ColorRenderer() as cr:
-        item_list = []
-        for item_nr in args.items:
-            item_list.append(tl.get_item_by_index(item_nr))
+        item_list = [tl.get_item_by_index(item_nr) for item_nr in args.items]
         print("Setting the following todo items to open again:")
         for item in item_list:
             tl.reopen(item)
@@ -189,21 +183,39 @@ def cmd_overdue(tl, args):
 
 
 def cmd_report(tl, args):
-    """shows a daily listing of report items
+    """shows a daily listing of all done and report items
     """
-    # TODO: list only report items and done items by day
-    raise NotImplementedError()
+    with ColorRenderer() as cr:
+        # get list of done and report items
+        report_list = [item for item in tl.list_items() if (item.done or item.is_report)]
+        # default date used when no done date is specified
+        na_date = datetime.datetime(1970, 1, 1)
+        # sort filtered list by "done" date 
+        report_list.sort(key=lambda x: x.properties.get("done", na_date), reverse=True)
+        # group report/done items by date
+        for keys, groups in groupby(report_list, 
+            lambda x: (x.properties.get("done", na_date).year, 
+                x.properties.get("done", na_date).month, 
+                x.properties.get("done", na_date).day)):
+            # filter out default dates again
+            if (na_date.year, na_date.month, na_date.day) == keys:
+                print("No done date attached")
+            else:
+                print("%d-%02d-%02d:" % keys)
+            for item in groups:
+                print(" ", cr.render(item))
 
 
 def cmd_archive(tl, args):
     # TODO: move all done / report items to another file and removes them from todo.txt
     raise NotImplementedError()
 
+def cmd_config(tl, args):
+    open_editor(args.config_file)
 
 def cmd_clean(tl, args):
     # TODO: removes all outdated files from todo.txt - needs to be confirmed
     raise NotImplementedError()
-
 
 def cmd_stats(tl, args):
     # write # open / # done / # prioritized / # overdue items
@@ -230,6 +242,7 @@ def cmd_stats(tl, args):
         print(cr.wrap_prioritized("Prioritized items    : %d" % counter["prioritized"]))
         print(cr.wrap_overdue("Overdue items        : %d" % counter["overdue"]))
         print(cr.wrap_report("Report items         : %d" % counter["report"]))
+
 
 def cmd_open(tl, args):
     raise NotImplementedError()
