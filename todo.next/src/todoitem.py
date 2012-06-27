@@ -1,8 +1,10 @@
 """
-:mod:``
-~~~~~~~~~~~~~~~~~~~~~
+:mod:`todoitem`
+~~~~~~~~~~~~~~~
 
+Provides functionality for a single todo item
 
+.. todo:: ``created`` flag handling due to todo.txt syntax
 
 .. created: 25.06.2012
 .. moduleauthor:: Phil <Phil@>
@@ -21,7 +23,7 @@ class TodoItem(object):
         self.projects, self.contexts = [], []
         self.done = None
         self.is_report = None
-        self.nr = -1
+        self.nr = None
         # find all special syntax
         self.parse()
         # fix dates on properties
@@ -41,6 +43,35 @@ class TodoItem(object):
         return self.properties.get("due", None)
     
     due_date = property(fget = get_due_date, fset = set_due_date)
+    
+    def is_overdue(self, reference_date = None):
+        if not reference_date:
+            reference_date = datetime.datetime.now()
+        if self.due_date and reference_date > self.due_date:
+            if (self.due_date.hour, self.due_date.minute) == (0, 0):
+                return False
+            else:
+                return True
+        return False
+    
+    
+    def is_still_open_today(self, reference_date = None):
+        if self.due_date:
+            if not reference_date:
+                reference_date = datetime.datetime.now()
+            if datetime.datetime(year=self.due_date.year, month=self.due_date.month, day=self.due_date.day) == \
+                datetime.datetime(year=reference_date.year, month=reference_date.month, day=reference_date.day):
+                if (self.due_date.hour, self.due_date.minute) == (0, 0): 
+                    # is due today on general day
+                    return True
+                elif self.due_date > reference_date:
+                    # due date is today but will be later on
+                    return True
+                else:
+                    # due date has already happened today
+                    return False
+        return False
+    
     
     def reopen(self):
         self.done = False

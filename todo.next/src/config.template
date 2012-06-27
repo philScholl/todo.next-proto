@@ -1,0 +1,7 @@
+[todo]
+# the location (full path) of the todo file
+todofile =
+# if True, the todo file will be sorted by todo.next, otherwise it is left like as-is
+sort = True
+# location of the editor, if not default
+editor =

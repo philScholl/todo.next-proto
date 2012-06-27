@@ -7,14 +7,51 @@
 """
 from __future__ import print_function
 import actions
-from todolist import TodoList
-import argparse
-    
+from todolist import TodoList, from_date
+import argparse, os, codecs, sys
+import ConfigParser
+
 if __name__ == '__main__':
+    
+    config_file = os.path.join(os.path.expanduser("~"), ".todonext.config")
+    config = ConfigParser.ConfigParser()
+    if os.path.exists(config_file):
+        with codecs.open(config_file, "r", "utf-8") as fp:
+            config.readfp(fp)
+        todo_filename = config.get("todo", "todofile")
+    else:
+        # TODO: how to name new file? Where to set it up? How about changing values? Just creating example config and then open it?
+        answer = raw_input("No configuration found, do you want to create a new configuration (y/N)?").lower().strip()
+        if answer != "y":
+            print("So, next time perhaps...")
+            quit(0)
+        # set todo file name
+        todo_filename = "todo.txt"
+        if len(sys.argv) > 1:
+            todo_filename = sys.argv[1]
+        todo_filename = os.path.abspath(todo_filename)
+        # ask for confirmation
+        answer = raw_input("Do you want to create %s (y/N)?").lower().strip()
+        if answer != "y":
+            todo_filename = os.path.abspath(raw_input("Please enter the path/filename of your todo file: ").strip())
+        print("* Trying to create a new config file at %s..." % config_file)
+        with codecs.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.template"), "r", "utf-8") as fromfp:
+            config.readfp(fromfp)
+            print()
+            config.set("todo", "todofile", todo_filename)
+            with codecs.open(config_file, "w", "utf-8") as tofp:
+                config.write(tofp)
+        if os.path.exists(todo_filename):
+            print("* Todo file %s already exists..." % todo_filename)
+        else:
+            print("* Creating todo file %s" % todo_filename)
+            with codecs.open(todo_filename, "w", "utf-8") as fp:
+                fp.write("(A) Check out ")
+        quit(0)
+        
     parser = argparse.ArgumentParser(
         description="Todo.txt file CLI interface", 
         epilog="For more, see https://github.com/philScholl/todo.next-proto",
-        #argument_default=argparse.SUPPRESS
         )
     parser.add_argument("-v", action="count")
     
@@ -29,6 +66,7 @@ if __name__ == '__main__':
     
     parse_list = subparser.add_parser("list", help="lists all items that match the given expression") #, aliases=["ls"]
     parse_list.add_argument("search_string", type=str, help="a search string", nargs="?")
+    parse_list.add_argument("--all", action="store_true", help="if given, also the done todo and report items are shown")
     
     parse_agenda = subparser.add_parser("agenda", help="prints the agenda for a given date")
     parse_agenda.add_argument("date", type=str, help="either a date or a string like 'tomorrow', default 'today'", nargs="?")
@@ -51,6 +89,7 @@ if __name__ == '__main__':
     
     parse_tasked = subparser.add_parser("tasked", help="shows all open todo items that I am tasked with")
     parse_tasked.add_argument("initiator", type=str, help="for filtering the name used for denoting the initiator", nargs="?")
+    parse_tasked.add_argument("--all", action="store_true", help="if given, also the done todos are shown")
     
     parse_overdue = subparser.add_parser("overdue", help="shows all items that are overdue")
     
@@ -68,17 +107,17 @@ if __name__ == '__main__':
     parse_stats = subparser.add_parser("stats", help="displays some statistics about your 'todo.txt' file")
 
     parse_project = subparser.add_parser("project", help="lists all todo items per project")
-    parse_project.add_argument("name", type=int, help="the name of the project to display", nargs="?")
+    parse_project.add_argument("name", type=str, help="the name of the project to display", nargs="?")
     parse_project.add_argument("--all", action="store_true", help="if given, also the done todo items are displayed")
 
     parse_context = subparser.add_parser("context", help="lists all todo items per context")
-    parse_context.add_argument("name", type=int, help="the name of the context to display", nargs="?")
+    parse_context.add_argument("name", type=str, help="the name of the context to display", nargs="?")
     parse_context.add_argument("--all", action="store_true", help="if given, also the done todo items are displayed")
     
     args = parser.parse_args()
     print(args)
     
-    tl = TodoList("todo.txt")
+    tl = TodoList(todo_filename)
 
     # call the respective command
     getattr(actions, "cmd_" + args.command)(tl, args)

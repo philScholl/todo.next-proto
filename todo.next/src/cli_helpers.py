@@ -9,7 +9,8 @@ version of todo.next.
 .. moduleauthor:: Philipp Scholl
 """
 from __future__ import print_function
-import datetime
+
+from todoitem import TodoItem
 from colorama import init, deinit, Fore, Back, Style #@UnresolvedImport
 import tempfile, subprocess, os, codecs, time, sys
 
@@ -86,41 +87,55 @@ class ColorRenderer(object):
         # we don't swallow the exceptions
         return False
     
+    def wrap_context(self, context):
+        return Back.RED + context + Back.BLACK #@UndefinedVariable
+    
+    def wrap_project(self, project):
+        return Back.MAGENTA + project + Back.BLACK #@UndefinedVariable
+    
+    def wrap_delegate(self, delegate):
+        return Back.YELLOW + Style.BRIGHT + delegate + Back.BLACK + Style.NORMAL #@UndefinedVariable
+    
+    def wrap_prioritized(self, line):
+        return Fore.WHITE + Style.BRIGHT + line + Style.RESET_ALL #@UndefinedVariable
+    
+    def wrap_overdue(self, line):
+        return Fore.RED + Style.BRIGHT + line + Style.RESET_ALL #@UndefinedVariable
+    
+    def wrap_today(self, line):
+        return Fore.YELLOW + Style.BRIGHT + line + Style.RESET_ALL #@UndefinedVariable
+    def wrap_report(self, line):
+        return Fore.CYAN + Style.DIM + line + Style.RESET_ALL  #@UndefinedVariable
+    def wrap_done(self, line):
+        return Fore.GREEN + Style.NORMAL + line + Style.RESET_ALL #@UndefinedVariable
     def render(self, item):
         """
         """
         text = item.text
         for tohi in item.projects:
-            text = text.replace(tohi, Back.MAGENTA + tohi + Back.BLACK) #@UndefinedVariable
+            text = text.replace(tohi, self.wrap_project(tohi))
         for tohi in item.contexts:
-            text = text.replace(tohi, Back.RED + tohi + Back.BLACK) #@UndefinedVariable
+            text = text.replace(tohi, self.wrap_context(tohi))
         for tohi in item.delegated_to:
-            text = text.replace(">>" + tohi, Back.YELLOW + Style.BRIGHT + ">>" + tohi + Back.BLACK + Style.NORMAL) #@UndefinedVariable
+            tohi = ">>" + tohi
+            text = text.replace(tohi, self.wrap_delegate(tohi))
         for tohi in item.delegated_from:
-            text = text.replace("<<" + tohi, Back.YELLOW + Style.BRIGHT + "<<" + tohi + Back.BLACK + Style.NORMAL) #@UndefinedVariable
+            tohi = "<<" + tohi
+            text = text.replace(tohi, self.wrap_delegate(tohi))
     
-        prefix = ""
-        now = datetime.datetime.now()
-        if item.priority:
-            prefix = Fore.WHITE + Style.BRIGHT #@UndefinedVariable
-        if item.due_date:
-            # due date is set
-            if datetime.datetime(year=item.due_date.year, month=item.due_date.month, day=item.due_date.day) == \
-                datetime.datetime(year=now.year, month=now.month, day=now.day):
-                if (item.due_date.hour, item.due_date.minute) == (0, 0): 
-                    # item is due today on general day
-                    prefix = Fore.YELLOW + Style.BRIGHT #@UndefinedVariable
-                elif item.due_date > now:
-                    # due date is today but will be later on
-                    prefix = Fore.YELLOW + Style.BRIGHT #@UndefinedVariable
-                else:
-                    # due date has already happened today
-                    prefix = Fore.RED + Style.BRIGHT #@UndefinedVariable
-            elif item.due_date < now:
-                prefix = Fore.RED + Style.BRIGHT #@UndefinedVariable
+        if item.nr == None:
+            listitem = "[   ] %s" % text
+        else:
+            listitem = "[% 3d] %s" % (item.nr, text)
+
         if item.is_report:
-            prefix = Fore.CYAN + Style.DIM #@UndefinedVariable
+            return self.wrap_report(listitem)
         if item.done:
-            prefix = Fore.GREEN + Style.NORMAL #@UndefinedVariable
-        listitem = "[% 3d] %s" % (item.nr, text)
-        return prefix + listitem + Style.RESET_ALL #@UndefinedVariable
+            return self.wrap_done(listitem)
+        if item.is_overdue():
+            return self.wrap_overdue(listitem)
+        if item.is_still_open_today():
+            return self.wrap_today(listitem)
+        if item.priority:
+            return self.wrap_prioritized(listitem)
+        return listitem
