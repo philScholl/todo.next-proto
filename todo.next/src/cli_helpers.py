@@ -12,9 +12,12 @@ from __future__ import print_function
 
 from colorama import init, deinit, Fore, Back, Style #@UnresolvedImport
 import tempfile, subprocess, os, codecs, time, sys
+from date_trans import shorten_date
+import urlparse, re
 
 def open_editor(filename):
     if sys.platform == "win32":
+        # alternatively use os.startfile
         return subprocess.call([filename,], shell=True)
     elif sys.platform == "linux2":
         editor = os.getenv("EDITOR", "emacs")
@@ -79,8 +82,9 @@ def get_editor_input(initial_text):
 class ColorRenderer(object):
     """
     """
-    def __init__(self):
+    def __init__(self, args = None):
         # initialize colorama
+        self.args = args
         init()
     
     def __enter__(self):
@@ -113,10 +117,33 @@ class ColorRenderer(object):
         return Fore.CYAN + Style.DIM + line + Style.RESET_ALL  #@UndefinedVariable
     def wrap_done(self, line):
         return Fore.GREEN + Style.NORMAL + line + Style.RESET_ALL #@UndefinedVariable
+    
+    def clean_string(self, item):
+        # if we don't have the arguments / configuration options, we cannot make assumptions here
+        if not self.args:
+            return item.text
+        text = item.text
+        conf = self.args.config
+        if conf.getboolean("display", "shorten_files") and "file" in item.properties:
+            file_name = item.properties.get("file") 
+            if file_name:
+                text = text.replace("file:%s" % file_name, "[%s]"%os.path.basename(file_name))
+        if conf.getboolean("display", "shorten_urls") and item.urls:
+            for url in item.urls:
+                text = text.replace(url, "[%s]" % urlparse.urlsplit(url).netloc)
+        if conf.getboolean("display", "shorten_due") and "due" in item.properties:
+            re_replace_due = re.compile("(due:[^\s]+?)(?=$|\s)", re.UNICODE)
+            text = re_replace_due.sub("due:"+shorten_date(item.properties["due"]), text)
+        if conf.getboolean("display", "shorten_done") and "done" in item.properties:
+            re_replace_done = re.compile("(done:[^\s]+?)(?=$|\s)", re.UNICODE)
+            text = re_replace_done.sub("done:"+shorten_date(item.properties["done"]), text)
+        #TODO: clean string if necessary
+        return text
+    
     def render(self, item):
         """
         """
-        text = item.text
+        text = self.clean_string(item)
         for tohi in item.projects:
             text = text.replace(tohi, self.wrap_project(tohi))
         for tohi in item.contexts:

@@ -97,21 +97,39 @@ class TodoList(object):
     
     def default_sort(self, item1, item2):
         # sort whether report item (they are right at the bottom)
-        if item1.is_report and not item2.is_report:
+        i1, i2 = (item1.is_report or item1.done), (item2.is_report or item2.done)
+        if i1 and not i2:
             return 1
-        if not item1.is_report and item2.is_report:
+        if not i1 and i2:
             return -1
-        # sort by done
-        if item1.done and not item2.done:
-            return 1
-        elif not item1.done and item2.done:
-            return -1
+#        if item1.is_report and not item2.is_report:
+#            return 1
+#        if not item1.is_report and item2.is_report:
+#            return -1
+#        # sort by done
+#        if item1.done and not item2.done:
+#            return 1
+#        elif not item1.done and item2.done:
+#            return -1
         # sort by priority
         i1, i2 = (item1.priority or "ZZ"), (item2.priority or "ZZ")
         if i1 > i2:
             return 1
         elif i1 < i2:
             return -1
+        # sort by reversed done date
+        i1, i2 = item1.properties.get("done", datetime.datetime(1970, 1, 1)), item2.properties.get("done", datetime.datetime(1970, 1, 1))
+        if i1 < i2:
+            return 1
+        if i1 > i2:
+            return -1
+        # sort by reversed due date
+        i1, i2 = item1.properties.get("due", datetime.datetime(1970, 1, 1)), item2.properties.get("due", datetime.datetime(1970, 1, 1))
+        if i1 < i2:
+            return 1
+        if i1 > i2:
+            return -1
+
         # sort alphabetically
         i1, i2 = item1.text.lower(), item2.text.lower()
         if i1 > i2:

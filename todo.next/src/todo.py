@@ -57,64 +57,67 @@ if __name__ == '__main__':
     
     subparser = parser.add_subparsers(title="subcommands", help = "sub command help", dest = "command")
     
-    parse_add = subparser.add_parser("add", help="adds a new item to the todo list")
+    parse_add = subparser.add_parser("add", help=actions.get_oneliner(actions.cmd_add))
     parse_add.add_argument("text", type=str, help="the item to add", nargs="*")
     
-    parse_del = subparser.add_parser("remove", help="removes an item from the todo list")
+    parse_del = subparser.add_parser("remove", help=actions.get_oneliner(actions.cmd_remove))
     parse_del.add_argument("items", type=int, help="the index number of the items to remove", nargs="+")
     parse_del.add_argument("--force", action="store_true", help="if given, confirmation is not requested")
     
-    parse_list = subparser.add_parser("list", help="lists all items that match the given expression") #, aliases=["ls"]
+    parse_list = subparser.add_parser("list", help=actions.get_oneliner(actions.cmd_list)) #, aliases=["ls"]
     parse_list.add_argument("search_string", type=str, help="a search string", nargs="?")
     parse_list.add_argument("--all", action="store_true", help="if given, also the done todo and report items are shown")
+    parse_list.add_argument("--regex", action="store_true", help="if given, the search string is interpreted as a regular expression")
     
-    parse_agenda = subparser.add_parser("agenda", help="prints the agenda for a given date")
+    parse_agenda = subparser.add_parser("agenda", help=actions.get_oneliner(actions.cmd_agenda))
     parse_agenda.add_argument("date", type=str, help="either a date or a string like 'tomorrow', default 'today'", nargs="?")
     
-    parse_done = subparser.add_parser("done", help="sets a todo item to 'done' status")
+    parse_done = subparser.add_parser("done", help=actions.get_oneliner(actions.cmd_done))
     parse_done.add_argument("items", type=int, help="the index number of the items to set to 'done'", nargs="+")
     
-    parse_reopen = subparser.add_parser("reopen", help="reopens a todo item already done")
+    parse_reopen = subparser.add_parser("reopen", help=actions.get_oneliner(actions.cmd_reopen))
     parse_reopen.add_argument("items", type=int, help="the index number of the items to reopen", nargs="+")
     
-    parse_edit = subparser.add_parser("edit", help="allows editing a todo item", description="This action will open an editor. If you're done editing, save the file and close the editor.")
+    parse_edit = subparser.add_parser("edit", help=actions.get_oneliner(actions.cmd_edit), description="This action will open an editor. If you're done editing, save the file and close the editor.")
     parse_edit.add_argument("item", type=int, help="the index number of the item to edit", nargs="?")
     
-    parse_delay = subparser.add_parser("delay", help="delays todo item's due date")
+    parse_delay = subparser.add_parser("delay", help=actions.get_oneliner(actions.cmd_delay))
     parse_delay.add_argument("date", type=str, help="either a date or a string like 'tomorrow', default '1d' (delays for 1 day)", nargs="?")
     
-    parse_delegated = subparser.add_parser("delegated", help="shows all delegated todo items that are still open")
+    parse_delegated = subparser.add_parser("delegated", help=actions.get_oneliner(actions.cmd_delegated))
     parse_delegated.add_argument("delegate", type=str, help="for filtering the name used for denoting a delegate", nargs="?")
     parse_delegated.add_argument("--all", action="store_true", help="if given, also the done todos are shown")
     
-    parse_tasked = subparser.add_parser("tasked", help="shows all open todo items that I am tasked with")
+    parse_tasked = subparser.add_parser("tasked", help=actions.get_oneliner(actions.cmd_tasked))
     parse_tasked.add_argument("initiator", type=str, help="for filtering the name used for denoting the initiator", nargs="?")
     parse_tasked.add_argument("--all", action="store_true", help="if given, also the done todos are shown")
     
-    parse_overdue = subparser.add_parser("overdue", help="shows all items that are overdue")
+    parse_overdue = subparser.add_parser("overdue", help=actions.get_oneliner(actions.cmd_overdue))
     
-    parse_archive = subparser.add_parser("archive", help="archives all non-current todo items and removes them from todo.txt")
+    parse_archive = subparser.add_parser("archive", help=actions.get_oneliner(actions.cmd_archive))
     parse_archive.add_argument("to_file", type=str, help="the file where all archived todo items are appended")
     
-    parse_report = subparser.add_parser("report", help="shows a report of all done and report items")
+    parse_report = subparser.add_parser("report", help=actions.get_oneliner(actions.cmd_report))
     parse_report.add_argument("date", type=str, help="either a date or a string like 'tomorrow', default 'today'", nargs="?")
     
-    parse_clean = subparser.add_parser("clean", help="removes all outdated todo items from the todo.txt")
+    #parse_clean = subparser.add_parser("clean", help=actions.get_oneliner(actions.cmd_clean))
     
-    parse_open = subparser.add_parser("open", help="opens either an URL or a file that is attached to the todo item")
+    parse_open = subparser.add_parser("open", help=actions.get_oneliner(actions.cmd_open))
     parse_open.add_argument("item", type=int, help="the index number of the item that has either an URL or file attached")
     
-    parse_stats = subparser.add_parser("stats", help="displays some statistics about your 'todo.txt' file")
+    parse_stats = subparser.add_parser("stats", help=actions.get_oneliner(actions.cmd_stats))
 
-    parse_project = subparser.add_parser("project", help="lists all todo items per project")
+    parse_project = subparser.add_parser("project", help=actions.get_oneliner(actions.cmd_project))
     parse_project.add_argument("name", type=str, help="the name of the project to display", nargs="?")
     parse_project.add_argument("--all", action="store_true", help="if given, also the done todo items are displayed")
 
-    parse_context = subparser.add_parser("context", help="lists all todo items per context")
+    parse_context = subparser.add_parser("context", help=actions.get_oneliner(actions.cmd_context))
     parse_context.add_argument("name", type=str, help="the name of the context to display", nargs="?")
     parse_context.add_argument("--all", action="store_true", help="if given, also the done todo items are displayed")
     
-    parse_config = subparser.add_parser("config", help="open configuration in editor")
+    parse_config = subparser.add_parser("config", help=actions.get_oneliner(actions.cmd_config))
+    
+    parse_backup = subparser.add_parser("backup", help=actions.get_oneliner(actions.cmd_backup))
     
     args = parser.parse_args()
     # set additional data that could be interesting to actions

@@ -5,3 +5,19 @@ todofile =
 sort = True
 # location of the editor, if not default
 editor =
+
+[archive]
+# archive directories and files are created based on "done"-date. 
+# Available fields are corresponding to strftime()
+archive_scheme = %Y-%m report.txt
+archive_dir = 
+archive_unsorted_dir = 
+backup_folder = 
+
+[display]
+# if True, URLs and files will be shortened to enhance legibility
+shorten_files = True
+shorten_urls = True
+# if True, the respective properties will be shortened
+shorten_due = True
+shorten_done = True

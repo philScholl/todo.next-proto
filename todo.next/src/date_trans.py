@@ -19,6 +19,36 @@ except ImportError:
 
 re_partial_date = re.compile("(\d{1,2})\.(\d{1,2})\.", re.UNICODE)
 
+def is_same_day(date1, date2):
+    return (date1.year, date1.month, date1.day) == (date2.year, date2.month, date2.day)
+
+def shorten_date(date, today = None):
+    if not today:
+        today = datetime.datetime.now()
+    if is_same_day(today + datetime.timedelta(days=-1), date):
+        # it is tomorrow
+        if (date.hour, date.minute) == (0, 0):
+            return "yesterday"
+        else:
+            return "yday," + date.strftime("%H:%M")
+    if is_same_day(today, date):
+        # it is today (in terms of reference date)
+        if (date.hour, date.minute) == (0, 0):
+            return "today"
+        else:
+            return date.strftime("%H:%M")
+    if is_same_day(today + datetime.timedelta(days=1), date):
+        # it is tomorrow
+        if (date.hour, date.minute) == (0, 0):
+            return "tomorrow"
+        else:
+            return "tomorrow," + date.strftime("%H:%M")
+    else:
+        if date.year == today.year:
+            return date.strftime("%m-%d")
+        else:
+            return date.strftime("%Y-%m-%d")
+
 def to_date(date_string, reference_date = None):
     """ parses a :class:`datetime` object from a given string
     

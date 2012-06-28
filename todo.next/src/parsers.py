@@ -9,10 +9,12 @@
 import re
 
 re_prio = re.compile("^\(([A-Z])\)", re.UNICODE)
-re_context = re.compile("(@.*?)(?:$|\s)", re.UNICODE)
-re_project = re.compile("(\+.*?)(?:$|\s)", re.UNICODE)
-re_properties = re.compile("(\w*?):(.*?)(?:$|\s)", re.UNICODE)
-re_delegates = re.compile("(<{2}|>{2})(.*?)(?:$|\s)", re.UNICODE)
+re_context = re.compile("(?:^|\s)(@.*?)(?=$|\s)", re.UNICODE)
+re_project = re.compile("(?:^|\s)(\+.*?)(?=$|\s)", re.UNICODE)
+# key:value pairs with exception of URLs
+re_properties = re.compile("(\w*?):((?!\s|//).+?)(?=$|\s)", re.UNICODE)
+re_delegates = re.compile("(<{2}|>{2})(.*?)(?=$|\s)", re.UNICODE)
+re_urls = re.compile("((?:(?:ht|f)tp[s]?):.+?)(?=$|\s)")
 
 def parse_prio(item):
     match = re_prio.match(item.text)
@@ -20,10 +22,12 @@ def parse_prio(item):
         item.priority = match.group(1)
     return item
 
+def parse_urls(item):
+    item.urls.extend(re_urls.findall(item.text))
+    return item
+
 def parse_delegates(item):
-    field = []
-    for match in re_delegates.findall(item.text):
-        field.append(match)
+    field = re_delegates.findall(item.text)
     if len(field) > 0:
         for mode, deleg in field:
             if mode == ">>":
@@ -36,13 +40,11 @@ def parse_delegates(item):
     return item
 
 def parse_project(item):
-    for match in re_project.findall(item.text):
-        item.projects.append(match)
+    item.projects.extend(re_project.findall(item.text))
     return item
     
 def parse_context(item):
-    for match in re_context.findall(item.text):
-        item.contexts.append(match)
+    item.contexts.extend(re_context.findall(item.text))
     return item
     
 def parse_done(item):
