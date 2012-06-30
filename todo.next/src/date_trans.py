@@ -49,6 +49,33 @@ def shorten_date(date, today = None):
         else:
             return date.strftime("%Y-%m-%d")
 
+weekdays = {
+    "sunday":    0, "sun": 0, "so": 0,
+    "monday":    1, "mon": 1, "mo": 1,
+    "tuesday":   2, "tue": 2, "di": 2,
+    "wednesday": 3, "wed": 3, "mi": 3,
+    "thursday":  4, "thu": 4, "do": 4,
+    "friday":    5, "fri": 5, "fr": 5,
+    "saturday":  6, "sat": 6, "sa": 6,
+    }
+
+def get_date_by_weekday(weekday_name, reference_date = None):
+    if not reference_date:
+        reference_date = datetime.datetime.now()         
+    wday_now = int(reference_date.strftime("%w"))
+    wday_then = weekdays.get(weekday_name, None)
+    if not wday_then:
+        return None
+    if wday_now == wday_then:
+        # one week later
+        return reference_date + datetime.timedelta(days = 7)
+    elif wday_now > wday_then:
+        # next week
+        return reference_date + datetime.timedelta(days = (7 - wday_now))
+    else:
+        # still this week
+        return reference_date + datetime.timedelta(days = (wday_then - wday_now))
+
 def to_date(date_string, reference_date = None):
     """ parses a :class:`datetime` object from a given string
     
@@ -63,12 +90,20 @@ def to_date(date_string, reference_date = None):
         return None
     now = datetime.datetime.now()
     if not reference_date:
+        # reference date is today (without hours / min)
         reference_date = datetime.datetime(now.year, now.month, now.day)
+    # normalize date string
     date_string = date_string.strip().lower()
+    # first handle special cases:
     if date_string in ["today", "td", ""]:
+        # today
         return reference_date
     elif date_string in ["tomorrow", "tm"]:
+        # tomorrow
         return reference_date + datetime.timedelta(days=1)
+    elif date_string in weekdays:
+        # a weekday was given
+        return get_date_by_weekday(date_string, reference_date)
     # clean underscores
     if "_" in date_string:
         date_string = date_string.replace("_", " ")

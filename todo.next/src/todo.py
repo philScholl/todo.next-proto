@@ -11,6 +11,9 @@ from todolist import TodoList, from_date
 import argparse, os, codecs, sys
 import ConfigParser
 
+def to_unicode(string):
+    return string.decode(sys.getfilesystemencoding())
+
 if __name__ == '__main__':
     
     config_file = os.path.join(os.path.expanduser("~"), ".todonext.config")
@@ -58,14 +61,14 @@ if __name__ == '__main__':
     subparser = parser.add_subparsers(title="subcommands", help = "sub command help", dest = "command")
     
     parse_add = subparser.add_parser("add", help=actions.get_oneliner(actions.cmd_add))
-    parse_add.add_argument("text", type=str, help="the item to add", nargs="*")
+    parse_add.add_argument("text", type=to_unicode, help="the item to add", nargs="*")
     
     parse_del = subparser.add_parser("remove", help=actions.get_oneliner(actions.cmd_remove))
     parse_del.add_argument("items", type=int, help="the index number of the items to remove", nargs="+")
     parse_del.add_argument("--force", action="store_true", help="if given, confirmation is not requested")
     
     parse_list = subparser.add_parser("list", help=actions.get_oneliner(actions.cmd_list)) #, aliases=["ls"]
-    parse_list.add_argument("search_string", type=str, help="a search string", nargs="?")
+    parse_list.add_argument("search_string", type=to_unicode, help="a search string", nargs="?")
     parse_list.add_argument("--all", action="store_true", help="if given, also the done todo and report items are shown")
     parse_list.add_argument("--regex", action="store_true", help="if given, the search string is interpreted as a regular expression")
     
@@ -85,17 +88,17 @@ if __name__ == '__main__':
     parse_delay.add_argument("date", type=str, help="either a date or a string like 'tomorrow', default '1d' (delays for 1 day)", nargs="?")
     
     parse_delegated = subparser.add_parser("delegated", help=actions.get_oneliner(actions.cmd_delegated))
-    parse_delegated.add_argument("delegate", type=str, help="for filtering the name used for denoting a delegate", nargs="?")
+    parse_delegated.add_argument("delegate", type=to_unicode, help="for filtering the name used for denoting a delegate", nargs="?")
     parse_delegated.add_argument("--all", action="store_true", help="if given, also the done todos are shown")
     
     parse_tasked = subparser.add_parser("tasked", help=actions.get_oneliner(actions.cmd_tasked))
-    parse_tasked.add_argument("initiator", type=str, help="for filtering the name used for denoting the initiator", nargs="?")
+    parse_tasked.add_argument("initiator", type=to_unicode, help="for filtering the name used for denoting the initiator", nargs="?")
     parse_tasked.add_argument("--all", action="store_true", help="if given, also the done todos are shown")
     
     parse_overdue = subparser.add_parser("overdue", help=actions.get_oneliner(actions.cmd_overdue))
     
     parse_archive = subparser.add_parser("archive", help=actions.get_oneliner(actions.cmd_archive))
-    parse_archive.add_argument("to_file", type=str, help="the file where all archived todo items are appended")
+    #parse_archive.add_argument("to_file", type=str, help="the file where all archived todo items are appended", nargs="?")
     
     parse_report = subparser.add_parser("report", help=actions.get_oneliner(actions.cmd_report))
     parse_report.add_argument("date", type=str, help="either a date or a string like 'tomorrow', default 'today'", nargs="?")
@@ -118,18 +121,21 @@ if __name__ == '__main__':
     parse_config = subparser.add_parser("config", help=actions.get_oneliner(actions.cmd_config))
     
     parse_backup = subparser.add_parser("backup", help=actions.get_oneliner(actions.cmd_backup))
+    parse_backup.add_argument("filename", type=str, help="the name of the backup file [optional]", nargs="?")
+    
+    parse_prio = subparser.add_parser("prio", help=actions.get_oneliner(actions.cmd_prio))
+    parse_prio.add_argument("items", type=int, help="the index number of the item to (re)prioritize", nargs="+")
+    parse_prio.add_argument("priority", type=str, help="the new priority ('A'..'Z' or '+'/'-') or 'x' (for removing)")
     
     args = parser.parse_args()
-    # set additional data that could be interesting to actions
+    # set additional data that could be important for actions
     args.config = config
     args.config_file = config_file
     args.todo_file = todo_filename
-        
-    tl = TodoList(todo_filename)
-
-    # call the respective command
-    getattr(actions, "cmd_" + args.command)(tl, args)
     
-    # if we have changed something, we need to write these changes to file again
-    if tl.dirty:
-        tl.write()
+    with TodoList(todo_filename) as tl:
+        try:
+            # call the respective command
+            getattr(actions, "cmd_" + args.command)(tl, args)
+        except:
+            raise

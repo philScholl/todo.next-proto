@@ -132,12 +132,15 @@ class ColorRenderer(object):
             for url in item.urls:
                 text = text.replace(url, "[%s]" % urlparse.urlsplit(url).netloc)
         if conf.getboolean("display", "shorten_due") and "due" in item.properties:
-            re_replace_due = re.compile("(due:[^\s]+?)(?=$|\s)", re.UNICODE)
+            re_replace_due = re.compile("(?:^|\s)(due:[^\s]+?)(?=$|\s)", re.UNICODE)
             text = re_replace_due.sub("due:"+shorten_date(item.properties["due"]), text)
         if conf.getboolean("display", "shorten_done") and "done" in item.properties:
-            re_replace_done = re.compile("(done:[^\s]+?)(?=$|\s)", re.UNICODE)
+            re_replace_done = re.compile("(?:^|\s)(done:[^\s]+?)(?=$|\s)", re.UNICODE)
             text = re_replace_done.sub("done:"+shorten_date(item.properties["done"]), text)
-        #TODO: clean string if necessary
+        if conf.getboolean("display", "hide_created"):
+            # we nearly never need to display the created property, so hide it
+            re_replace_created = re.compile("(\s?created:[^\s]+?)(?=$|\s)")
+            text = re_replace_created.sub("", text)
         return text
     
     def render(self, item):

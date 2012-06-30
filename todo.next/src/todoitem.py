@@ -29,7 +29,7 @@ class TodoItem(object):
         self.parse()
         # fix dates on properties
         self.fix_properties()
-
+    
     def set_due_date(self, date_or_str):
         if isinstance(date_or_str, basestring):
             self.properties["due"] = to_date(date_or_str)
@@ -120,8 +120,9 @@ class TodoItem(object):
             if "%s:" % prop_name not in self.text:
                 # we need to normalize this property name, make everything lowercase
                 re_normalize_prop = re.compile("(%s:)" % prop_name, re.IGNORECASE)
-                self.text = re_normalize_prop.sub("%s:"%prop_name, self.text)
+                self.text = re_normalize_prop.sub("%s:" % prop_name, self.text)
             if prop_name in date_props:
+                # replace all date props with a "beautified" date string
                 repl_date = to_date(props[prop_name])
                 if repl_date:
                     self.text = self.text.replace(props[prop_name], from_date(repl_date))

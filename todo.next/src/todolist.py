@@ -24,6 +24,18 @@ class TodoList(object):
         self.sort_list()
     
     
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb): #@UnusedVariable
+        # if we have changed something, we need to write these changes to file again
+        if self.dirty:
+            #print("would write")
+            self.write()
+        # we don't swallow the exceptions
+        return False
+
+    
     def write(self):
         with codecs.open(self.todofile, "w", "utf-8") as fp:
             if not self.sorted:
@@ -44,9 +56,12 @@ class TodoList(object):
 
     def add_item(self, item_str):
         item = self.append(item_str)
+        now_str = from_date(datetime.datetime.now())
         if item.is_report:
             # in case of report item, we need to store the "done" date for later sorting
-            item.replace_or_add_prop("done", from_date(datetime.datetime.now()))
+            item.replace_or_add_prop("done", now_str)
+        else:
+            item.replace_or_add_prop("created", now_str)
         self.dirty = True
         return item
     
@@ -69,19 +84,25 @@ class TodoList(object):
     
     
     def get_item_by_index(self, item_nr):
+        if not self.sorted:
+            self.sort_list()
         item = self.todolist[item_nr]
         item.nr = int(item_nr)
         return item
     
+    
+    def get_items_by_index_list(self, item_nrs):
+        return [self.get_item_by_index(item_nr) for item_nr in item_nrs]
     
     def remove_item(self, item):
         self.todolist.remove(item)
         self.dirty = True
     
     
-    def reparse_item(self, item):
-        item.parse()
-        item.fix_properties()
+    def replace_item(self, item, new_item):
+        index = self.todolist.index(item)
+        new_item.nr = index
+        self.todolist[index] = new_item
         self.sorted = False
         self.dirty = True
         
@@ -94,6 +115,20 @@ class TodoList(object):
                 return item.properties[property_name]
         return inner_getter
        
+    def set_priority(self, item, new_prio):
+        if new_prio:
+            if item.priority:
+                # slice off the old prio
+                item.text = item.text[4:]
+            # prepend the new prio
+            item.text = "(%s) %s" % (new_prio, item.text)
+        else:
+            # remove priority flag
+            if item.priority:
+                # remove "(x) " at beginning
+                item.text = item.text[4:]
+        item.priority = new_prio
+        self.dirty = True
     
     def default_sort(self, item1, item2):
         # sort whether report item (they are right at the bottom)
@@ -147,9 +182,18 @@ class TodoList(object):
         self.sorted = True
     
     
-    def list_items(self):
+    def list_items(self, criterion_fn = None):
+        # we need to get the list sorted
         if not self.sorted:
             self.sort_list()
+        # loop through all items
         for nr, item in enumerate(self.todolist):
+            # attach number according to index
             item.nr = nr
-            yield item
+            if criterion_fn:
+                # if a criterion is defined, use it to determine whether to return item
+                if criterion_fn(item):
+                    yield item
+            else:
+                # just return every item
+                yield item
