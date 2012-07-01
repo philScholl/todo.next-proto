@@ -159,13 +159,13 @@ class TodoList(object):
         elif i1 < i2:
             return -1
         # sort by reversed done date
-        i1, i2 = item1.properties.get("done", datetime.datetime(1970, 1, 1)), item2.properties.get("done", datetime.datetime(1970, 1, 1))
+        i1, i2 = item1.done_date or datetime.datetime(1970, 1, 1), item2.done_date or datetime.datetime(1970, 1, 1)
         if i1 < i2:
             return 1
         if i1 > i2:
             return -1
         # sort by reversed due date
-        i1, i2 = item1.properties.get("due", datetime.datetime(1970, 1, 1)), item2.properties.get("due", datetime.datetime(1970, 1, 1))
+        i1, i2 = item1.due_date or datetime.datetime(1970, 1, 1), item2.due_date or datetime.datetime(1970, 1, 1)
         if i1 < i2:
             return 1
         if i1 > i2:

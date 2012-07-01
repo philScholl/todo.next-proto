@@ -125,24 +125,27 @@ class ColorRenderer(object):
             return item.text
         text = item.text
         conf = self.args.config
-        if conf.getboolean("display", "shorten_files") and "file" in item.properties:
+        shorten = conf.get("display", "shorten").lower().split()
+        suppress = conf.get("display", "suppress").lower().split()
+        if "files" in shorten and "file" in item.properties:
             file_name = item.properties.get("file") 
             if file_name:
                 text = text.replace("file:%s" % file_name, "[%s]"%os.path.basename(file_name))
-        if conf.getboolean("display", "shorten_urls") and item.urls:
+        if "urls" in shorten and item.urls:
             for url in item.urls:
                 text = text.replace(url, "[%s]" % urlparse.urlsplit(url).netloc)
-        if conf.getboolean("display", "shorten_due") and "due" in item.properties:
+        if "due" in shorten and item.due_date:
             re_replace_due = re.compile(r"\b(due:[^\s]+?)(?=$|\s)", re.UNICODE)
-            text = re_replace_due.sub("due:"+shorten_date(item.properties["due"]), text)
-        if conf.getboolean("display", "shorten_done") and "done" in item.properties:
+            text = re_replace_due.sub("due:"+shorten_date(item.due_date), text)
+        if "done" in shorten and item.done_date:
             re_replace_done = re.compile(r"\b(done:[^\s]+?)(?=$|\s)", re.UNICODE)
-            text = re_replace_done.sub("done:"+shorten_date(item.properties["done"]), text)
-        if conf.getboolean("display", "hide_created"):
+            text = re_replace_done.sub("done:"+shorten_date(item.done_date), text)
+        if "created" in suppress and item.created_date:
             # we nearly never need to display the created property, so hide it
             re_replace_created = re.compile(r"\b(created:[^\s]+?)(?=$|\s)")
             text = re_replace_created.sub("", text)
         return text
+    
     
     def render(self, item):
         """

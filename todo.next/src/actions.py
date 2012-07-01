@@ -188,12 +188,11 @@ def cmd_report(tl, args):
         # default date used when no done date is specified
         na_date = datetime.datetime(1970, 1, 1)
         # sort filtered list by "done" date 
-        report_list.sort(key=lambda x: x.properties.get("done", na_date), reverse=True)
+        report_list.sort(key=lambda x: x.done_date or na_date, reverse=True)
         # group report/done items by date
         for keys, groups in groupby(report_list, 
-            lambda x: (x.properties.get("done", na_date).year, 
-                x.properties.get("done", na_date).month, 
-                x.properties.get("done", na_date).day)):
+            lambda x: ((x.done_date or na_date).year, (x.done_date or na_date).month, (x.done_date or na_date).day)
+            ):
             # filter out default dates again
             if (na_date.year, na_date.month, na_date.day) == keys:
                 print("No done date attached")
@@ -427,13 +426,13 @@ def cmd_archive(tl, args):
         # default date used when no done date is specified
         na_date = datetime.datetime(1970, 1, 1)
         # sort filtered list by "done" date 
-        report_list.sort(key=lambda x: x.properties.get("done", na_date), reverse=True)
+        report_list.sort(key=lambda x: x.done_date or na_date, reverse=True)
         
         # for mapping items to file names
         file_map = collections.defaultdict(list)
         
         for item in report_list:
-            item_date = item.properties.get("done", na_date)
+            item_date = item.done_date or na_date
             if is_same_day(item_date, na_date):
                 dst_fn = args.config.get("archive", "archive_unsorted_filename")
             else:

@@ -115,7 +115,7 @@ class TodoItem(object):
             self.properties[property_name] = real_property_value
         else:
             self.properties[property_name] = new_property_value
-        re_replace_prop = re.compile(r"(?:^|\s)(%s:.*?)(?:$|\s)" % property_name, re.UNICODE)
+        re_replace_prop = re.compile(r"\b(%s:.+?)(?:$|\s)" % property_name, re.UNICODE)
         matches = re_replace_prop.findall(self.text)
         if len(matches) > 0:
             # only replace the first occurrence
