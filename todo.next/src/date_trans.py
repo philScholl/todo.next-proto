@@ -13,11 +13,30 @@ import datetime, re
 USE_DATEUTIL = False
 try:
     from dateutil.parser import parse
+    from dateutil.relativedelta import relativedelta
     USE_DATEUTIL = True
 except ImportError:
     pass
 
 re_partial_date = re.compile("(\d{1,2})\.(\d{1,2})\.", re.UNICODE)
+re_rel_date = re.compile("^([+-]?)(\d{1,2}y)?(\d{1,2}m)?(\d{1,2}w)?(\d{1,3}d)?(\d{1,3}h)?$", re.IGNORECASE)
+
+
+def get_relative_date(rel_string, reference_date = None):
+    if not reference_date:
+        reference_date = datetime.datetime.now()
+    res = re_rel_date.findall(rel_string)[0]
+    sign = res[0]
+    dyears = int(res[1][:-1] or 0)
+    dmonths = int(res[2][:-1] or 0)
+    dweeks = int(res[3][:-1] or 0)
+    ddays = int(res[4][:-1] or 0)
+    dhours = int(res[5][:-1] or 0)
+    rel = relativedelta(years=dyears, months=dmonths, days=ddays, weeks=dweeks, hours=dhours)
+    if sign == "-":
+        return reference_date - rel
+    else:
+        return reference_date + rel
 
 def is_same_day(date1, date2):
     return (date1.year, date1.month, date1.day) == (date2.year, date2.month, date2.day)
@@ -104,6 +123,10 @@ def to_date(date_string, reference_date = None):
     elif date_string in weekdays:
         # a weekday was given
         return get_date_by_weekday(date_string, reference_date)
+    elif re_rel_date.match(date_string):
+        if USE_DATEUTIL:
+            # a relative timespan like "-1y5w2d" (1 year, 5 weeks and 2 days)
+            return get_relative_date(date_string, reference_date)
     # clean underscores
     if "_" in date_string:
         date_string = date_string.replace("_", " ")
@@ -113,7 +136,7 @@ def to_date(date_string, reference_date = None):
             return parse(date_string, default=reference_date)
         else:
             # FIXME: fix format string
-            return datetime.datetime.strptime(date_string, "format")
+            return datetime.datetime.strptime(date_string, "%Y-%m-%d_H:%M")
     except:
         # date of form xx.xx.
         match = re_partial_date.match(date_string)

@@ -8,13 +8,13 @@
 
 import re
 
-re_prio = re.compile("^\(([A-Z])\)", re.UNICODE)
-re_context = re.compile("(?:^|\s)(@.*?)(?=$|\s)", re.UNICODE)
-re_project = re.compile("(?:^|\s)(\+.*?)(?=$|\s)", re.UNICODE)
+re_prio = re.compile(r"^\(([A-Z])\)", re.UNICODE)
+re_context = re.compile(r"(?:^|\s)(@.+?)(?=$|\s)", re.UNICODE)
+re_project = re.compile(r"(?:^|\s)(\+.+?)(?=$|\s)", re.UNICODE)
 # key:value pairs with exception of URLs
-re_properties = re.compile("(\w*?):((?!\s|//).+?)(?=$|\s)", re.UNICODE)
-re_delegates = re.compile("(<{2}|>{2})(.*?)(?=$|\s)", re.UNICODE)
-re_urls = re.compile("((?:(?:ht|f)tp[s]?):.+?)(?=$|\s)")
+re_properties = re.compile(r"(\w+?):((?!\s|//).+?)(?=$|\s)", re.UNICODE)
+re_delegates = re.compile(r"(<{2}|>{2})(.*?)(?=$|\s)", re.UNICODE)
+re_urls = re.compile(r"(?:^|\s)((?:(?:ht|f)tp[s]?):.+?)(?=$|\s)")
 
 def parse_prio(item):
     match = re_prio.match(item.text)

@@ -5,11 +5,11 @@
 Contains all actions that can be executed by ``todo.next``
 
 .. created: 26.06.2012
-.. moduleauthor:: Phil <Phil@>
+.. moduleauthor:: Philipp Scholl <Phil@>
 """
 from __future__ import print_function
 from cli_helpers import ColorRenderer, get_editor_input, open_editor
-from date_trans import to_date, is_same_day
+from date_trans import to_date, is_same_day, from_date
 
 import collections, datetime, re, os
 from operator import attrgetter
@@ -53,7 +53,7 @@ def cmd_add(tl, args):
         
     The source of the todo item can either be the command line or an editor.
     """
-    with ColorRenderer() as cr:
+    with ColorRenderer(args) as cr:
         if not args.text:
             # no arguments given, open editor and let user enter data there
             output = get_editor_input("")
@@ -71,7 +71,7 @@ def cmd_add(tl, args):
 def cmd_remove(tl, args):
     """removes one or more items from the todo list
     """
-    with ColorRenderer() as cr:
+    with ColorRenderer(args) as cr:
         item_list = tl.get_items_by_index_list(args.items)
         if not args.force:
             print("Do you really want to remove the following item(s):")
@@ -92,7 +92,7 @@ def cmd_remove(tl, args):
 def cmd_done(tl, args):
     """sets the status of one or more todo items to 'done'
     """
-    with ColorRenderer() as cr:
+    with ColorRenderer(args) as cr:
         print("Marked following todo items as 'done':")
         for item in tl.get_items_by_index_list(args.items):
             tl.set_to_done(item)
@@ -102,7 +102,7 @@ def cmd_done(tl, args):
 def cmd_reopen(tl, args):
     """reopens one or more items marked as 'done'
     """
-    with ColorRenderer() as cr:
+    with ColorRenderer(args) as cr:
         print("Setting the following todo items to open again:")
         for item in tl.get_items_by_index_list(args.items):
             tl.reopen(item)
@@ -112,7 +112,7 @@ def cmd_reopen(tl, args):
 def cmd_edit(tl, args):
     """allows editing a given todo item
     """
-    with ColorRenderer() as cr:
+    with ColorRenderer(args) as cr:
         if not args.item:
             open_editor(args.todo_file)
             quit(0)
@@ -132,7 +132,7 @@ def cmd_edit(tl, args):
 def cmd_delegated(tl, args):
     """shows all todo items that have been delegated and wait for input
     """
-    with ColorRenderer() as cr:
+    with ColorRenderer(args) as cr:
         to_list = collections.defaultdict(list)
         for item in tl.list_items():
             if not args.all and (item.done or item.is_report):
@@ -152,7 +152,7 @@ def cmd_delegated(tl, args):
 def cmd_tasked(tl, args):
     """shows all open todo items that I am tasked with
     """
-    with ColorRenderer() as cr:
+    with ColorRenderer(args) as cr:
         from_list = collections.defaultdict(list)
         for item in tl.list_items():
             if not args.all and (item.done or item.is_report):
@@ -184,7 +184,7 @@ def cmd_report(tl, args):
     """
     with ColorRenderer(args) as cr:
         # get list of done and report items
-        report_list = tl.list_items(lambda x: x.done or x.is_report)
+        report_list = list(tl.list_items(lambda x: x.done or x.is_report))
         # default date used when no done date is specified
         na_date = datetime.datetime(1970, 1, 1)
         # sort filtered list by "done" date 
@@ -277,7 +277,7 @@ def cmd_stats(tl, args):
     # write # open / # done / # prioritized / # overdue items
     counter = collections.defaultdict(int)
     delegates = set()
-    with ColorRenderer() as cr:
+    with ColorRenderer(args) as cr:
         for item in tl.list_items():
             counter["total"] += 1
             if item.done:
@@ -343,7 +343,7 @@ def cmd_project(tl, args):
     """lists all todo items per project
     """
     # lists todo items per project (like list, only with internal grouping)
-    with ColorRenderer() as cr:
+    with ColorRenderer(args) as cr:
         project_dict = collections.defaultdict(list)
         for item in tl.list_items(lambda x: True if args.all or not (x.done or x.is_report) else False):
             for project in item.projects:
@@ -364,7 +364,7 @@ def cmd_context(tl, args):
     """lists all todo items per context
     """
     # lists todo items per context (like list, only with internal grouping)
-    with ColorRenderer() as cr:
+    with ColorRenderer(args) as cr:
         context_dict = collections.defaultdict(list)
         for item in tl.list_items(lambda x: True if args.all or not (x.done or x.is_report) else False):
             for context in item.contexts:
@@ -463,8 +463,32 @@ def cmd_archive(tl, args):
 def cmd_delay(tl, args):
     """delays the due date of one or more todo items
     """
-    # TODO: add relative date format like [+/-]12w4d5h20m
-    raise NotImplementedError()
+    with ColorRenderer(args) as cr:
+        item = tl.get_item_by_index(args.item)
+        if item.due_date:
+            new_date = to_date(args.date, item.due_date)
+            if isinstance(new_date, basestring):
+                # remove first character, as it is "?" with a non-parsable date
+                print("The given relative date could not be parsed: %s" % new_date[1:])
+            else:
+                # ask for confirmation
+                if not args.force:
+                    print(" ", cr.render(item))
+                    answer = raw_input("Delaying the preceding item's date from %s to %s (y/N)?" % 
+                        (item.due_date, new_date)).strip().lower()
+                    if answer != "y":
+                        return
+                # do the actual replacement
+                tl.replace_or_add_prop(item, "due", from_date(new_date), new_date)
+        else:
+            new_date = to_date(args.date)
+            if not args.force:
+                print(" ", cr.render(item))
+                answer = raw_input("The preceding item has no due date set, set to %s (y/N)?" % new_date).strip().lower()
+                if answer != "y":
+                    return
+                tl.replace_or_add_prop(item, "due", from_date(new_date), new_date)
+        print(" ", cr.render(item))
 
 
 def cmd_clean(tl, args):

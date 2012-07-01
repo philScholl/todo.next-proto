@@ -66,6 +66,12 @@ class TodoList(object):
         return item
     
 
+    def replace_or_add_prop(self, item, prop_name, new_prop_val, real_prop_val = None):
+        item.replace_or_add_prop(prop_name, new_prop_val, real_prop_val)
+        self.dirty = True
+        return item
+
+
     def set_to_done(self, item):
         # report items cannot be marked as done, as they are "done" by definition
         if item.is_report:

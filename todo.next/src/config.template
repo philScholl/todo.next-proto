@@ -17,6 +17,12 @@ archive_unsorted_filename = archive\without_date.txt
 backup_dir = backup
 
 [display]
+# sort
+sort = done_or_todo overdue_flag priority_flag done_time due_time created_time alphabetical project context done todo
+# parts
+shorten = 
+# properties: due created done file url
+suppress = 
 # if True, URLs and files will be shortened to enhance legibility
 shorten_files = True
 shorten_urls = True

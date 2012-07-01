@@ -13,7 +13,8 @@ from __future__ import print_function
 from colorama import init, deinit, Fore, Back, Style #@UnresolvedImport
 import tempfile, subprocess, os, codecs, time, sys
 from date_trans import shorten_date
-import urlparse, re
+import urlparse 
+import re
 
 def open_editor(filename):
     if sys.platform == "win32":
@@ -132,14 +133,14 @@ class ColorRenderer(object):
             for url in item.urls:
                 text = text.replace(url, "[%s]" % urlparse.urlsplit(url).netloc)
         if conf.getboolean("display", "shorten_due") and "due" in item.properties:
-            re_replace_due = re.compile("(?:^|\s)(due:[^\s]+?)(?=$|\s)", re.UNICODE)
+            re_replace_due = re.compile(r"\b(due:[^\s]+?)(?=$|\s)", re.UNICODE)
             text = re_replace_due.sub("due:"+shorten_date(item.properties["due"]), text)
         if conf.getboolean("display", "shorten_done") and "done" in item.properties:
-            re_replace_done = re.compile("(?:^|\s)(done:[^\s]+?)(?=$|\s)", re.UNICODE)
+            re_replace_done = re.compile(r"\b(done:[^\s]+?)(?=$|\s)", re.UNICODE)
             text = re_replace_done.sub("done:"+shorten_date(item.properties["done"]), text)
         if conf.getboolean("display", "hide_created"):
             # we nearly never need to display the created property, so hide it
-            re_replace_created = re.compile("(\s?created:[^\s]+?)(?=$|\s)")
+            re_replace_created = re.compile(r"\b(created:[^\s]+?)(?=$|\s)")
             text = re_replace_created.sub("", text)
         return text
     

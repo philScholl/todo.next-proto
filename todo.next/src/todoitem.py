@@ -30,20 +30,40 @@ class TodoItem(object):
         # fix dates on properties
         self.fix_properties()
     
-    def set_due_date(self, date_or_str):
+    def set_date(self, prop_name, date_or_str):
         if isinstance(date_or_str, basestring):
-            self.properties["due"] = to_date(date_or_str)
+            self.properties[prop_name] = to_date(date_or_str)
         elif isinstance(date_or_str, (datetime.date, datetime.datetime)):
-            self.properties["due"] = date_or_str
+            self.properties[prop_name] = date_or_str
         elif date_or_str == None:
-            self.properties["due"] = None
+            self.properties[prop_name] = None
         else:
             print("ERROR: setting non-date or non-string")
 
+    def get_date(self, prop_name):
+        return self.properties.get(prop_name, None)
+
+    def set_due_date(self, date_or_str):
+        self.set_date("due", date_or_str)
+
     def get_due_date(self):
-        return self.properties.get("due", None)
+        return self.get_date("due")
+    
+    def set_done_date(self, date_or_str):
+        self.set_date("done", date_or_str)
+        
+    def get_done_date(self):
+        return self.get_date("done")
+    
+    def set_created_date(self, date_or_str):
+        self.set_date("created", date_or_str)
+    
+    def get_created_date(self):
+        return self.get_date("created")
     
     due_date = property(fget = get_due_date, fset = set_due_date)
+    done_date = property(fget = get_done_date, fset = set_done_date)
+    created_date = property(fget = get_created_date, fset = set_created_date)
     
     def is_overdue(self, reference_date = None):
         if not reference_date:
@@ -95,14 +115,14 @@ class TodoItem(object):
             self.properties[property_name] = real_property_value
         else:
             self.properties[property_name] = new_property_value
-        re_replace_prop = re.compile("(?:^|\s)(%s:.*?)(?:$|\s)" % property_name, re.UNICODE)
+        re_replace_prop = re.compile(r"(?:^|\s)(%s:.*?)(?:$|\s)" % property_name, re.UNICODE)
         matches = re_replace_prop.findall(self.text)
         if len(matches) > 0:
             # only replace the first occurrence
             self.text = self.text.replace(matches[0], "%s:%s" % (property_name, new_property_value))
             # and remove all further occurrences
-            for _match in matches[1:]:
-                self.text = self.text.replace(matches[0], "")
+            for match in matches[1:]:
+                self.text = self.text.replace(match, "")
         else:
             self.text = self.text.strip() + " %s:%s" % (property_name, new_property_value)
     

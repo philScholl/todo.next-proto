@@ -85,7 +85,9 @@ if __name__ == '__main__':
     parse_edit.add_argument("item", type=int, help="the index number of the item to edit", nargs="?")
     
     parse_delay = subparser.add_parser("delay", help=actions.get_oneliner(actions.cmd_delay))
+    parse_delay.add_argument("item", type=int, help="the index number of the item to delay", nargs="?")
     parse_delay.add_argument("date", type=str, help="either a date or a string like 'tomorrow', default '1d' (delays for 1 day)", nargs="?")
+    parse_delay.add_argument("--force", action="store_true", help="if given, confirmation is not requested")
     
     parse_delegated = subparser.add_parser("delegated", help=actions.get_oneliner(actions.cmd_delegated))
     parse_delegated.add_argument("delegate", type=to_unicode, help="for filtering the name used for denoting a delegate", nargs="?")
