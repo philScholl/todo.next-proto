@@ -39,9 +39,13 @@ def get_relative_date(rel_string, reference_date = None):
         return reference_date + rel
 
 def is_same_day(date1, date2):
+    if not (isinstance(date1, datetime.datetime) and isinstance(date2, datetime.datetime)):
+        return False
     return (date1.year, date1.month, date1.day) == (date2.year, date2.month, date2.day)
 
 def shorten_date(date, today = None):
+    if not isinstance(date, datetime.datetime):
+        return date
     if not today:
         today = datetime.datetime.now()
     if is_same_day(today + datetime.timedelta(days=-1), date):

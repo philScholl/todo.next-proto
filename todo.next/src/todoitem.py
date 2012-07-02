@@ -104,11 +104,12 @@ class TodoItem(object):
         self.done = True
         # if necessary, create properties
         now = datetime.datetime.now()
-        # replace ``done`` properties with current value (and add datetime object for properties)
-        self.replace_or_add_prop("done", from_date(now), now)
         # add marker "x " at beginning
         if not self.text.startswith("x "):
             self.text = "x " + self.text
+        # replace ``done`` properties with current value (and add datetime object for properties)
+        self.replace_or_add_prop("done", from_date(now), now)
+
 
     def replace_or_add_prop(self, property_name, new_property_value, real_property_value = None):
         if real_property_value:

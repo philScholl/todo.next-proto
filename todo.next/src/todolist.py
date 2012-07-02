@@ -62,12 +62,14 @@ class TodoList(object):
             item.replace_or_add_prop("done", now_str)
         else:
             item.replace_or_add_prop("created", now_str)
+        self.reindex()
         self.dirty = True
         return item
     
 
     def replace_or_add_prop(self, item, prop_name, new_prop_val, real_prop_val = None):
         item.replace_or_add_prop(prop_name, new_prop_val, real_prop_val)
+        self.reindex()
         self.dirty = True
         return item
 
@@ -77,7 +79,7 @@ class TodoList(object):
         if item.is_report:
             return item
         item.set_to_done()
-        self.sorted = False
+        self.reindex()
         self.dirty = True
         return item
 
@@ -85,7 +87,7 @@ class TodoList(object):
     def reopen(self, item):
         item.reopen()
         self.dirty = True
-        self.sorted = False
+        self.reindex()
         return item
     
     
@@ -102,6 +104,7 @@ class TodoList(object):
     
     def remove_item(self, item):
         self.todolist.remove(item)
+        self.reindex()
         self.dirty = True
     
     
@@ -109,7 +112,7 @@ class TodoList(object):
         index = self.todolist.index(item)
         new_item.nr = index
         self.todolist[index] = new_item
-        self.sorted = False
+        self.reindex()
         self.dirty = True
         
         
@@ -134,6 +137,7 @@ class TodoList(object):
                 # remove "(x) " at beginning
                 item.text = item.text[4:]
         item.priority = new_prio
+        self.reindex()
         self.dirty = True
     
     def default_sort(self, item1, item2):
@@ -159,13 +163,15 @@ class TodoList(object):
         elif i1 < i2:
             return -1
         # sort by reversed done date
-        i1, i2 = item1.done_date or datetime.datetime(1970, 1, 1), item2.done_date or datetime.datetime(1970, 1, 1)
+        (i1, i2) = (item1.done_date if isinstance(item1.done_date, datetime.datetime) else datetime.datetime(1970, 1, 1), 
+                    item2.done_date if isinstance(item2.done_date, datetime.datetime) else datetime.datetime(1970, 1, 1))
         if i1 < i2:
             return 1
         if i1 > i2:
             return -1
         # sort by reversed due date
-        i1, i2 = item1.due_date or datetime.datetime(1970, 1, 1), item2.due_date or datetime.datetime(1970, 1, 1)
+        (i1, i2) = (item1.due_date if isinstance(item1.due_date, datetime.datetime) else datetime.datetime(1970, 1, 1), 
+                    item2.due_date if isinstance(item2.due_date, datetime.datetime) else datetime.datetime(1970, 1, 1))
         if i1 < i2:
             return 1
         if i1 > i2:
@@ -188,6 +194,12 @@ class TodoList(object):
         self.sorted = True
     
     
+    def reindex(self):
+        self.sort_list()
+        for nr, item in enumerate(self.todolist):
+            item.nr = nr 
+    
+
     def list_items(self, criterion_fn = None):
         # we need to get the list sorted
         if not self.sorted:

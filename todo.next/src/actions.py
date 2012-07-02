@@ -11,13 +11,16 @@ from __future__ import print_function
 from cli_helpers import ColorRenderer, get_editor_input, open_editor
 from date_trans import to_date, is_same_day, from_date
 
-import collections, datetime, re, os
-from operator import attrgetter
+import collections, datetime, re, os, glob
 from itertools import groupby
 import webbrowser, codecs
 from todoitem import TodoItem
+from todolist import TodoList
 
+# regex for detecting priority argument in CLI
 re_prio = re.compile("[xA-Z+-]")
+# regex for replacing archive scheme variables with "*"
+re_replace_archive_vars = re.compile("%\D")
 
 def get_oneliner(func):
     try:
@@ -38,12 +41,12 @@ def cmd_list(tl, args):
                 args.regex = False
             re_search = re.compile(args.search_string, re.UNICODE)
         for item in tl.list_items():
-            if not args.all and (item.is_report or item.done):
+            if (not args.all) and (item.is_report or item.done):
                 # if --all is not set, report and done items are suppressed
+                #print(repr(item.properties))
                 continue
-            if args.regex:
-                if re_search.findall(item.text):
-                    print(cr.render(item))
+            if args.regex and re_search.findall(item.text):
+                print(cr.render(item))
             elif not args.search_string or args.search_string in item.text: 
                 print(cr.render(item))
 
@@ -96,6 +99,7 @@ def cmd_done(tl, args):
         print("Marked following todo items as 'done':")
         for item in tl.get_items_by_index_list(args.items):
             tl.set_to_done(item)
+            tl.reindex()
             print(" ", cr.render(item))
 
 
@@ -106,6 +110,7 @@ def cmd_reopen(tl, args):
         print("Setting the following todo items to open again:")
         for item in tl.get_items_by_index_list(args.items):
             tl.reopen(item)
+            tl.reindex()
             print(" ", cr.render(item))
 
 
@@ -183,21 +188,25 @@ def cmd_report(tl, args):
     """shows a daily report of all done and report items
     """
     with ColorRenderer(args) as cr:
+        if args.date:
+            args.date = to_date(args.date)
         # get list of done and report items
         report_list = list(tl.list_items(lambda x: x.done or x.is_report))
         # default date used when no done date is specified
         na_date = datetime.datetime(1970, 1, 1)
         # sort filtered list by "done" date 
-        report_list.sort(key=lambda x: x.done_date or na_date, reverse=True)
+        report_list.sort(key=lambda x: x.done_date or na_date)
         # group report/done items by date
         for keys, groups in groupby(report_list, 
             lambda x: ((x.done_date or na_date).year, (x.done_date or na_date).month, (x.done_date or na_date).day)
             ):
+            if args.date and keys != (args.date.year, args.date.month, args.date.day):
+                continue
             # filter out default dates again
             if (na_date.year, na_date.month, na_date.day) == keys:
                 print("No done date attached")
             else:
-                print("%d-%02d-%02d:" % keys)
+                print("Report for %d-%02d-%02d:" % keys)
             for item in groups:
                 print(" ", cr.render(item))
 
@@ -208,20 +217,34 @@ def cmd_agenda(tl, args):
     with ColorRenderer(args) as cr:
         agenda_items = []
         # if not set, get agenda for today
+        list_all = False
         if not args.date:
             args.date = datetime.datetime.now()
+        elif args.date == "*":
+            list_all = True
         else:
             args.date = to_date(args.date)
             if isinstance(args.date, basestring):
                 print("Could not parse date argument '%s'" % args.date)
                 quit(-1)
         for item in tl.list_items(lambda x: True if x.due_date else False):
-            if is_same_day(args.date, item.due_date):
+            if is_same_day(args.date, item.due_date) or list_all:
                 agenda_items.append(item)
-        agenda_items.sort(key=attrgetter("due_date"))
-        print("Agenda for %d-%02d-%02d" % (args.date.year, args.date.month, args.date.day))
-        for item in agenda_items:
-            print(" ", cr.render(item))
+        # default date used when no done date is specified
+        na_date = datetime.datetime(1970, 1, 1)
+        # sort filtered list by "due" date and whether they are already marked as "done" 
+        agenda_items.sort(key=lambda x: (x.done ,x.due_date) or (x.done, na_date))
+        # group report/done items by date
+        for keys, groups in groupby(agenda_items, 
+            lambda x: ((x.due_date or na_date).year, (x.due_date or na_date).month, (x.due_date or na_date).day)
+            ):
+            # filter out default dates again
+            if (na_date.year, na_date.month, na_date.day) == keys:
+                print("No done date attached")
+            else:
+                print("Agenda for %d-%02d-%02d:" % keys)
+            for item in groups:
+                print(" ", cr.render(item))
 
 
 def cmd_config(tl, args):
@@ -494,4 +517,59 @@ def cmd_clean(tl, args):
     """removes all outdated todo items from the todo list
     """
     # TODO: removes all outdated files from todo.txt - needs to be confirmed
+    raise NotImplementedError()
+
+def cmd_search(tl, args):
+    """lists all current and archived todo items that contain the search string
+    """
+    with ColorRenderer(args) as cr:
+        if args.regex:
+            # search for regex
+            re_search = re.compile(args.search_string, re.UNICODE)
+        # store for all matching items
+        all_matches = []
+        # first, look at current todo list
+        for item in tl.list_items():
+            if args.regex and re_search.findall(item.text):
+                all_matches.append((args.todo_file, item))
+            elif args.search_string in item.text: 
+                all_matches.append((args.todo_file, item))
+        
+        # get file list of all archive files by replacing all %x-variables with '*' and
+        # let glob do the hard work
+        file_pattern = re_replace_archive_vars.sub("*", args.config.get("archive", "archive_filename_scheme"))
+        root_dir = os.path.dirname(args.todo_file)
+        file_list = glob.glob(os.path.join(root_dir, file_pattern))
+        # add the file for items without done timestamp
+        unsorted_file = os.path.join(root_dir, args.config.get("archive", "archive_unsorted_filename"))
+        if os.path.exists(unsorted_file):
+            file_list.append(unsorted_file)
+        
+        for arch_file in file_list:
+            # create a new todo list for each archive file
+            with TodoList(arch_file) as atl:
+                for item in atl.todolist:
+                    if args.regex and re_search.findall(item.text):
+                        all_matches.append((arch_file, item))
+                    elif args.search_string in item.text: 
+                        all_matches.append((arch_file, item))
+        
+        # sort by filename
+        all_matches.sort(key = lambda x:x[0])
+        # group by filename
+        for filename, items in groupby(all_matches, lambda x: x[0]):
+            print("File '%s':" % filename)
+            for item in items:
+                print(" ", cr.render(item[1]))
+        print("%d matches found" % len(all_matches))
+        
+        
+def cmd_attach(tl, args):
+    """attaches a file to the given todo item
+    """
+    raise NotImplementedError()
+
+def cmd_detach(tl, args):
+    """detaches a file from a given todo item
+    """
     raise NotImplementedError()

@@ -10,7 +10,7 @@ editor =
 # archive directory and files are created based on "done"-date. 
 # Available fields are corresponding to strftime() (e.g. %Y for year like '2012', etc.)
 # the directories may be absolute or relative to the location of the todo file
-archive_filename_scheme = archive\%Y\%Y-%m-%d_report.txt
+archive_filename_scheme = archive\%Y-%m\%Y-%m-%d-%A_report.txt
 # the following directories may not contain variable parts
 archive_unsorted_filename = archive\without_date.txt
 # for storing backups
@@ -23,11 +23,3 @@ sort = done_or_todo overdue_flag priority_flag done_date due_date created_date a
 shorten = files urls due done
 # properties that will be suppressed on display
 suppress = created
-# if True, URLs and files will be shortened to enhance legibility
-shorten_files = True
-shorten_urls = True
-# if True, the respective properties will be shortened
-shorten_due = True
-shorten_done = True
-# hides the "created" property for display of most actions
-hide_created = True

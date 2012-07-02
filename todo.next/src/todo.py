@@ -73,8 +73,11 @@ if __name__ == '__main__':
     parse_list.add_argument("--regex", action="store_true", help="if given, the search string is interpreted as a regular expression")
     
     parse_agenda = subparser.add_parser("agenda", help=actions.get_oneliner(actions.cmd_agenda))
-    parse_agenda.add_argument("date", type=str, help="either a date or a string like 'tomorrow', default 'today'", nargs="?")
-    
+    parse_agenda.add_argument("date", type=str, help="either a date or a string like 'tomorrow' or '*', default 'today'", nargs="?")
+
+    parse_report = subparser.add_parser("report", help=actions.get_oneliner(actions.cmd_report))
+    parse_report.add_argument("date", type=str, help="either a date or a string like 'tomorrow' or '*', default 'today'", nargs="?")
+
     parse_done = subparser.add_parser("done", help=actions.get_oneliner(actions.cmd_done))
     parse_done.add_argument("items", type=int, help="the index number of the items to set to 'done'", nargs="+")
     
@@ -101,10 +104,7 @@ if __name__ == '__main__':
     
     parse_archive = subparser.add_parser("archive", help=actions.get_oneliner(actions.cmd_archive))
     #parse_archive.add_argument("to_file", type=str, help="the file where all archived todo items are appended", nargs="?")
-    
-    parse_report = subparser.add_parser("report", help=actions.get_oneliner(actions.cmd_report))
-    parse_report.add_argument("date", type=str, help="either a date or a string like 'tomorrow', default 'today'", nargs="?")
-    
+        
     #parse_clean = subparser.add_parser("clean", help=actions.get_oneliner(actions.cmd_clean))
     
     parse_open = subparser.add_parser("open", help=actions.get_oneliner(actions.cmd_open))
@@ -126,8 +126,19 @@ if __name__ == '__main__':
     parse_backup.add_argument("filename", type=str, help="the name of the backup file [optional]", nargs="?")
     
     parse_prio = subparser.add_parser("prio", help=actions.get_oneliner(actions.cmd_prio))
-    parse_prio.add_argument("items", type=int, help="the index number of the item to (re)prioritize", nargs="+")
+    parse_prio.add_argument("items", type=int, help="the index number of the items to (re)prioritize", nargs="+")
     parse_prio.add_argument("priority", type=str, help="the new priority ('A'..'Z' or '+'/'-') or 'x' (for removing)")
+    
+    parse_attach = subparser.add_parser("attach", help=actions.get_oneliner(actions.cmd_attach))
+    parse_attach.add_argument("item", type=int, help="the index number of the item to which something should be attached")
+    parse_attach.add_argument("location", type=str, help="either a (relative) file name or a (fully qualified) URL")
+    
+    parse_detach = subparser.add_parser("detach", help=actions.get_oneliner(actions.cmd_detach))
+    parse_attach.add_argument("item", type=int, help="the index number of the item from which something should be detached")
+    
+    parse_search = subparser.add_parser("search", help=actions.get_oneliner(actions.cmd_search))
+    parse_search.add_argument("search_string", type=to_unicode, help="a search string")
+    parse_search.add_argument("--regex", action="store_true", help="if given, the search string is interpreted as a regular expression")
     
     args = parser.parse_args()
     # set additional data that could be important for actions
