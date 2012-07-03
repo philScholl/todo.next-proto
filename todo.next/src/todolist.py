@@ -61,8 +61,8 @@ class TodoList(object):
                 # we encountered an exception, check whether we accidentally removed anything
                 print("ERROR: An error occurred, thus the changes have not been saved (you don't want to lose your data)!")
             else:
-                print("would write")
-                #self.write()
+                #print("would write")
+                self.write()
         # we don't swallow the exceptions
         return False
 

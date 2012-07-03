@@ -156,7 +156,7 @@ class ColorRenderer(object):
             # we nearly never need to display the created property, so hide it
             re_replace_created = re.compile(r"\b(created:[^\s]+?)(?=$|\s)")
             text = re_replace_created.sub("", text)
-        return text
+        return " ".join(text.split())
     
     
     def render(self, item):
