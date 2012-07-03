@@ -10,7 +10,15 @@ import codecs
 import datetime
 
 class TodoList(object):
+    """class representing a todo list that's stored in a ``todo.next`` file.
+    """
+    
     def __init__(self, todofile):
+        """constructor, reads file and fills todo list with :class:`TodoItem`s
+        
+        :param todofile: the filename of the ``todo.next`` file
+        :type todofile: str
+        """
         self.todofile = todofile
         self.todolist = []
         self.dirty = False
@@ -20,23 +28,48 @@ class TodoList(object):
                 line = line.strip()
                 if not line:
                     continue
-                self.append(line)
+                # append items to list
+                self._append(line)
+        # sort list
         self.sort_list()
     
     
     def __enter__(self):
+        """context manager: on entering returns this :class:`TodoList`
+        
+        :returns: the todo list object
+        :rtype: :class:`TodoList`
+        """
         return self
     
+    
     def __exit__(self, exc_type, exc_val, exc_tb): #@UnusedVariable
+        """context manager: on closing, writes the altered todo file
+        
+        :param exc_type: exception type
+        :type exc_type: ?
+        :param exc_val: exception value
+        :type exc_val: ?
+        :param exc_tb: the exception's traceback
+        :type exc_tb: ?
+        :returns: whether the exception was handled in here
+        :rtype: bool
+        """
         # if we have changed something, we need to write these changes to file again
         if self.dirty:
-            #print("would write")
-            self.write()
+            if not exc_type:
+                # TODO: we encountered an exception, check whether we accidentally removed anything
+                pass
+            else:
+                #print("would write")
+                self.write()
         # we don't swallow the exceptions
         return False
 
     
     def write(self):
+        """writes the todo items back to the file
+        """
         with codecs.open(self.todofile, "w", "utf-8") as fp:
             if not self.sorted:
                 self.sort_list()
@@ -44,7 +77,14 @@ class TodoList(object):
                 fp.write("%s\n" % item.text)
     
     
-    def append(self, item_str):
+    def _append(self, item_str):
+        """appends a todo item to the todo list
+        
+        :param item_str: the string representation of a :class:`TodoItem`
+        :type item_str: str
+        :returns: the parsed todo item
+        :rtype: :class:`TodoItem` 
+        """
         item_str = item_str.strip()
         if not item_str:
             return
@@ -55,19 +95,48 @@ class TodoList(object):
 
 
     def add_item(self, item_str):
-        item = self.append(item_str)
+        """exposed add item method, adds a new todo item to the todo file and reindexes
+        
+        :param item_str: the string representation of a :class:`TodoItem`
+        :type item_str: str
+        :returns: the parsed todo item
+        :rtype: :class:`TodoItem` 
+        """
+        # append the item to the todo list
+        item = self._append(item_str)
+        # add done and created properties
         now_str = from_date(datetime.datetime.now())
         if item.is_report:
             # in case of report item, we need to store the "done" date for later sorting
             item.replace_or_add_prop("done", now_str)
         else:
             item.replace_or_add_prop("created", now_str)
+        # the new item is sorted into the list
         self.reindex()
+        # something has changed
         self.dirty = True
         return item
     
 
     def replace_or_add_prop(self, item, prop_name, new_prop_val, real_prop_val = None):
+        """replaces a property in the item text or, if already existent, updates it.
+        
+        .. note:: the properties are considered to be unique, i.e. only one property
+                  of a certain name may exist.
+                  
+        :param item: a todo item
+        :type item: :class:`TodoItem`
+        :param prop_name: the name of the property to be changed (e.g. "done")
+        :type prop_name: str
+        :param new_prop_val: the new property value in string form (e.g. "2012-07-02")
+        :type new_prop_val: str
+        :param real_prop_val: an object representation of the property value, e.g. a 
+            :class:`datetime.datetime` object representing the date of the value that
+            the properties field will contain. If not set, the string value is taken.
+        :type real_prop_val: any
+        :returns: the altered todo item
+        :rtype: :class:`TodoItem` 
+        """
         item.replace_or_add_prop(prop_name, new_prop_val, real_prop_val)
         self.reindex()
         self.dirty = True
@@ -75,16 +144,39 @@ class TodoList(object):
 
 
     def set_to_done(self, item):
+        """sets the state of a :class:`TodoItem` to *done*.
+        
+        The ``done`` flag and the done date are set.
+        
+        :param item: a todo item
+        :type item: :class:`TodoItem`
+        :returns: the altered todo item
+        :rtype: :class:`TodoItem` 
+        """
         # report items cannot be marked as done, as they are "done" by definition
         if item.is_report:
             return item
         item.set_to_done()
+        # reindex the list, as the order may have changed
         self.reindex()
         self.dirty = True
         return item
 
 
     def reopen(self, item):
+        """sets the state of a :class:`TodoItem` to *not done*.
+        
+        Only the ``done`` flag is reset, the done date stays for 
+        reporting reasons (may change).
+        
+        :param item: a todo item
+        :type item: :class:`TodoItem`
+        :returns: the altered todo item
+        :rtype: :class:`TodoItem` 
+        """
+        # report items cannot be marked as undone, as they are "done" by definition
+        if item.is_report:
+            return item
         item.reopen()
         self.dirty = True
         self.reindex()
@@ -92,29 +184,60 @@ class TodoList(object):
     
     
     def get_item_by_index(self, item_nr):
+        """returns the ``n-th`` todo item from the todo list
+        
+        :param item_nr: the index of the requested item
+        :type item_nr: int
+        :returns: the requested todo item (if existing)
+        :rtype: :class:`TodoItem` 
+        """
+        # if list is unsorted, do that first
         if not self.sorted:
             self.sort_list()
+        # simply look up the index
         item = self.todolist[item_nr]
+        # assign the index temporarily
         item.nr = int(item_nr)
         return item
     
     
     def get_items_by_index_list(self, item_nrs):
+        """returns a list of todo items from the todo list by indices
+        
+        :param item_nrs: an iterable of the indices of the requested items
+        :type item_nr: list(int)
+        :returns: the requested todo items (if existing)
+        :rtype: list(:class:`TodoItem`) 
+        """
         return [self.get_item_by_index(item_nr) for item_nr in item_nrs]
     
+    
     def remove_item(self, item):
+        """removes a todo item from the todo list
+        
+        :param item: the todo item to be removed
+        :type item: :class:`TodoItem`
+        """
         self.todolist.remove(item)
         self.reindex()
         self.dirty = True
+        # TODO: return removed value?
     
     
     def replace_item(self, item, new_item):
+        """replaces a todo item in the todo list with another item
+        
+        :param item: the old todo item to be replaced
+        :type item: :class:`TodoItem`
+        :param new_item: the new todo item to replace the old one
+        :type new_item: :class:`TodoItem`
+        """
         index = self.todolist.index(item)
         new_item.nr = index
         self.todolist[index] = new_item
         self.reindex()
         self.dirty = True
-        
+        # TODO: return something?
         
     def sort_key_by(self, property_name, default):
         def inner_getter(item):
