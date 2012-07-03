@@ -8,7 +8,7 @@ Provides simple date transformations and date parsing for todo.next application.
 .. moduleauthor:: Philipp Scholl <Phil@>
 """
 from __future__ import print_function
-import datetime, re
+import datetime, re, calendar
 # if dateutil is installed, this makes everything a lot easier
 USE_DATEUTIL = False
 try:
@@ -18,30 +18,77 @@ try:
 except ImportError:
     pass
 
+# partial date without year (German form, e.g. '21.12.')
 re_partial_date = re.compile("(\d{1,2})\.(\d{1,2})\.", re.UNICODE)
+# relative form of date, e.g. '+1w2d' (plus 1 week, 2 days). Month support needs :mod:`dateutil
 re_rel_date = re.compile("^([+-]?)(\d{1,2}y)?(\d{1,2}m)?(\d{1,2}w)?(\d{1,3}d)?(\d{1,3}h)?$", re.IGNORECASE)
 
 
+def add_year(date, nr_of_years):
+    """adds years to the given date
+    
+    This is only a problem with the 29th of February. This is handled here.
+    
+    :param date: the date
+    :type date: :class:`datetime.datetime`
+    :param nr_of_years: the number of years to add to the date
+    :type nr_of_years: int
+    :return: the date with the added years
+    :rtype: :class:`datetime.datetime`
+    """
+    if date.month == 2 and date.day == 29:
+        if not calendar.isleap(date.year + nr_of_years):
+            return date.replace(year=date.year+nr_of_years, day=28)
+    return date.replace(year=date.year+nr_of_years)
+    
+
 def get_relative_date(rel_string, reference_date = None):
+    """returns a date that is calculated relatively to a reference date
+    
+    :param rel_string: a string like e.g. ``-1y2w3h`` meaning 1 year, 2 weeks and 3 hours ago
+    :type rel_string: str
+    :param reference_date: the reference date, if not given, the current point of time is used
+    :type reference_date: :class:`datetime.datetime`
+    :return: the date with the relative timespan added
+    :rtype: :class:`datetime.datetime`
+    """
     if not reference_date:
         reference_date = datetime.datetime.now()
-    res = re_rel_date.findall(rel_string)[0]
+    res = re_rel_date.findall(rel_string)
+    if not res:
+        return rel_string
+    res = res[0]
     sign = res[0]
     dyears = int(res[1][:-1] or 0)
     dmonths = int(res[2][:-1] or 0)
     dweeks = int(res[3][:-1] or 0)
     ddays = int(res[4][:-1] or 0)
     dhours = int(res[5][:-1] or 0)
-    rel = relativedelta(years=dyears, months=dmonths, days=ddays, weeks=dweeks, hours=dhours)
+    
+    if USE_DATEUTIL:
+        # easy: let dateutil do the heavy lifting
+        rel = relativedelta(years=dyears, months=dmonths, days=ddays, weeks=dweeks, hours=dhours)
+    else:
+        # we have to fallback on timedelta
+        if (dmonths):
+            # dateutil is not installed, so only years, days, weeks and hours are supported
+            # TODO: log a warning
+            pass
+        rel = datetime.timedelta(days=ddays, weeks=dweeks, hours=dhours)
+        if dyears:
+            # add years
+            rel = add_year(rel, dyears) 
     if sign == "-":
         return reference_date - rel
     else:
         return reference_date + rel
 
+
 def is_same_day(date1, date2):
     if not (isinstance(date1, datetime.datetime) and isinstance(date2, datetime.datetime)):
         return False
     return (date1.year, date1.month, date1.day) == (date2.year, date2.month, date2.day)
+
 
 def shorten_date(date, today = None):
     if not isinstance(date, datetime.datetime):
@@ -128,9 +175,8 @@ def to_date(date_string, reference_date = None):
         # a weekday was given
         return get_date_by_weekday(date_string, reference_date)
     elif re_rel_date.match(date_string):
-        if USE_DATEUTIL:
-            # a relative timespan like "-1y5w2d" (1 year, 5 weeks and 2 days)
-            return get_relative_date(date_string, reference_date)
+        # a relative timespan like "-1y5w2d" (1 year, 5 weeks and 2 days)
+        return get_relative_date(date_string, reference_date)
     # clean underscores
     if "_" in date_string:
         date_string = date_string.replace("_", " ")
@@ -149,10 +195,10 @@ def to_date(date_string, reference_date = None):
             if month > 12 and day < 12:
                 month, day = day, month
             result = datetime.datetime(now.year, month, day)
+            # without year, date falls into past -> move to next year
             if now > result:
-                # FIXME: check for leap year
-                # timedelta has no year!
-                result = datetime.datetime(now.year + 1, month, day)
+                # add a year
+                result = add_year(result, 1)
             return result
         else:
             # show that we could not interpret the date string

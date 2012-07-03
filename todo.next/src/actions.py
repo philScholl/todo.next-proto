@@ -10,6 +10,7 @@ Contains all actions that can be executed by ``todo.next``
 from __future__ import print_function
 from cli_helpers import ColorRenderer, get_editor_input, open_editor
 from date_trans import to_date, is_same_day, from_date
+from parsers import re_urls
 
 import collections, datetime, re, os, glob
 from itertools import groupby
@@ -567,9 +568,66 @@ def cmd_search(tl, args):
 def cmd_attach(tl, args):
     """attaches a file to the given todo item
     """
-    raise NotImplementedError()
+    with ColorRenderer(args) as cr:
+        item = tl.get_item_by_index(args.item)
+        if re_urls.match(args.location):
+            # we got an URL
+            print("Attaching URL", args.location)
+            item.text += " %s" % args.location
+            item.urls.append(args.location.strip())
+            tl.dirty = True
+            tl.reindex() 
+        else:
+            path = os.path.abspath(args.location)
+            if not os.path.exists(path):
+                print("File path '%s' does not exist" % path)
+                quit(-1)
+
+            if item.properties.get("file", None):
+                print("A file is already attached to this item: %s" % item.properties["file"])
+                answer = raw_input("Do you want to replace this file reference with the file '%s' (y/N)" % path).lower().strip()
+                if answer != "y":
+                    quit(0)
+            print("Attaching file", path)
+            tl.replace_or_add_prop(item, "file", path)
+            tl.reindex()
+        print(" ", cr.render(item))
+
 
 def cmd_detach(tl, args):
     """detaches a file from a given todo item
     """
-    raise NotImplementedError()
+    with ColorRenderer(args) as cr:
+        item = tl.get_item_by_index(args.item)
+        attmnt_list = []
+        attmnt_list.extend(("url", url) for url in item.urls)
+        if item.properties.get("file", None):
+            attmnt_list.append(("file", item.properties["file"]))
+        if len(attmnt_list) == 0:
+            print("This item has no file or URLs attached")
+            quit(0)
+        elif len(attmnt_list) == 1:
+            attmnt = attmnt_list[0]
+        if len(attmnt_list) > 1:
+            print("Please choose one of the following attachments to delete:")
+            for nr, attmnt in enumerate(attmnt_list):
+                print("  [%d] %s" % (nr, attmnt[1]))
+            print("  [x] Abort operation")
+            answer = raw_input("Your choice: ").lower().strip()
+            if answer == "x":
+                quit(0)
+            try:
+                attmnt_nr = int(answer)
+                attmnt = attmnt_list[attmnt_nr]
+            except:
+                print("Not a valid input")
+                quit(0)
+        print(list(attmnt))
+        print(item.text)
+        if attmnt[0] == "file":
+            item = tl.replace_or_add_prop(item, "file", "xxx")
+        else:
+            item.text = item.text.replace(attmnt[1], "")
+        print(" ", cr.render(item))
+        print(item.text)
+        tl.dirty = True

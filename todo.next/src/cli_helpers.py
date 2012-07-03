@@ -16,7 +16,15 @@ from date_trans import shorten_date
 import urlparse 
 import re
 
+
 def open_editor(filename):
+    """opens a text editor with the specified filename
+    
+    :param filename: the file name to be edited
+    :type filename: str
+    :return: return code of the respective OS call
+    :rtype: int
+    """
     if sys.platform == "win32":
         # alternatively use os.startfile
         return subprocess.call([filename,], shell=True)
@@ -35,7 +43,7 @@ def get_editor_input(initial_text):
     :param initial_text: the given text that can be edited
     :type initial_text: utf-8 str
     :result: the changed text
-    :rtype: utf-8 str
+    :rtype: utf-8 encoded str
     """
     # create a temporary text file
     tmpfile = tempfile.mktemp(".txt", "todo.next.")
@@ -98,25 +106,29 @@ class ColorRenderer(object):
         return False
     
     def wrap_context(self, context):
-        return Back.RED + context + Back.BLACK #@UndefinedVariable
+        return Back.RED + context + Back.BLACK + "#resetmarker" #@UndefinedVariable
     
     def wrap_project(self, project):
-        return Back.MAGENTA + project + Back.BLACK #@UndefinedVariable
+        return Back.MAGENTA + project + Back.BLACK + "#resetmarker" #@UndefinedVariable
     
     def wrap_delegate(self, delegate):
-        return Back.YELLOW + Style.BRIGHT + delegate + Back.BLACK + Style.NORMAL #@UndefinedVariable
+        return Back.YELLOW + Style.BRIGHT + delegate + Back.BLACK + "#resetmarker" #@UndefinedVariable
+    
     
     def wrap_prioritized(self, line):
+        line = line.replace("#resetmarker", Fore.WHITE + Style.BRIGHT) #@UndefinedVariable
         return Fore.WHITE + Style.BRIGHT + line + Style.RESET_ALL #@UndefinedVariable
-    
     def wrap_overdue(self, line):
+        line = line.replace("#resetmarker", Fore.RED + Style.BRIGHT) #@UndefinedVariable
         return Fore.RED + Style.BRIGHT + line + Style.RESET_ALL #@UndefinedVariable
-    
     def wrap_today(self, line):
+        line = line.replace("#resetmarker", Fore.YELLOW + Style.BRIGHT) #@UndefinedVariable
         return Fore.YELLOW + Style.BRIGHT + line + Style.RESET_ALL #@UndefinedVariable
     def wrap_report(self, line):
+        line = line.replace("#resetmarker", Fore.CYAN + Style.DIM) #@UndefinedVariable
         return Fore.CYAN + Style.DIM + line + Style.RESET_ALL  #@UndefinedVariable
     def wrap_done(self, line):
+        line = line.replace("#resetmarker", Fore.GREEN + Style.NORMAL) #@UndefinedVariable
         return Fore.GREEN + Style.NORMAL + line + Style.RESET_ALL #@UndefinedVariable
     
     def clean_string(self, item):
@@ -177,4 +189,4 @@ class ColorRenderer(object):
             return self.wrap_today(listitem)
         if item.priority:
             return self.wrap_prioritized(listitem)
-        return listitem
+        return listitem.replace("#resetmarker", Style.NORMAL + Fore.WHITE) #@UndefinedVariable

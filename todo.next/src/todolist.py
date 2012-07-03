@@ -57,12 +57,12 @@ class TodoList(object):
         """
         # if we have changed something, we need to write these changes to file again
         if self.dirty:
-            if not exc_type:
-                # TODO: we encountered an exception, check whether we accidentally removed anything
-                pass
+            if exc_type:
+                # we encountered an exception, check whether we accidentally removed anything
+                print("ERROR: An error occurred, thus the changes have not been saved (you don't want to lose your data)!")
             else:
-                #print("would write")
-                self.write()
+                print("would write")
+                #self.write()
         # we don't swallow the exceptions
         return False
 
@@ -128,7 +128,8 @@ class TodoList(object):
         :type item: :class:`TodoItem`
         :param prop_name: the name of the property to be changed (e.g. "done")
         :type prop_name: str
-        :param new_prop_val: the new property value in string form (e.g. "2012-07-02")
+        :param new_prop_val: the new property value in string form (e.g. "2012-07-02"). 
+            If ``None``, the property will be deleted.
         :type new_prop_val: str
         :param real_prop_val: an object representation of the property value, e.g. a 
             :class:`datetime.datetime` object representing the date of the value that

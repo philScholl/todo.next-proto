@@ -4,10 +4,8 @@
 
 Provides functionality for a single todo item
 
-.. todo:: ``created`` flag handling due to todo.txt syntax
-
 .. created: 25.06.2012
-.. moduleauthor:: Phil <Phil@>
+.. moduleauthor:: Philipp Scholl
 """
 from __future__ import print_function
 import parsers
@@ -94,12 +92,20 @@ class TodoItem(object):
     
     
     def reopen(self):
+        """reopens an already "done" marked todo item 
+        """
         self.done = False
         # remove "x " prefix
         if self.text.startswith("x "):
             self.text = self.text[2:]
     
+    
     def set_to_done(self):
+        """sets this item to status "done"
+        
+        This automatically adds a ``done:{datetime}`` property and prepends
+        the item with ``x ``.
+        """
         # set to done
         self.done = True
         # if necessary, create properties
@@ -112,28 +118,69 @@ class TodoItem(object):
 
 
     def replace_or_add_prop(self, property_name, new_property_value, real_property_value = None):
+        """replaces a property in this item text or, if already existent, updates it, 
+            or, if new value is None, removes it.
+        
+        .. note:: the properties are considered to be unique, i.e. only one property
+                  of a certain name may exist.
+                  
+        :param property_name: the name of the property to be changed (e.g. "done")
+        :type property_name: str
+        :param new_property_value: the new property value in string form (e.g. "2012-07-02"). 
+            If ``None``, the property will be deleted.
+        :type new_property_value: str
+        :param real_property_value: an object representation of the property value, e.g. a 
+            :class:`datetime.datetime` object representing the date of the value that
+            the properties field will contain. If not set, the string value is taken.
+        :type real_property_value: any
+        :returns: the altered todo item
+        :rtype: :class:`TodoItem` 
+        """
+        # normalize property name
+        property_name = property_name.lower()
+        # regular expression for finding property key:value pairs
+        re_replace_prop = re.compile(r"\b(%s:.+?)(?:$|\s)" % property_name, re.UNICODE)
+        matches = re_replace_prop.findall(self.text)
+        
+        if not new_property_value:
+            # remove the property
+            if self.properties.get(property_name, None) != None:
+                del self.properties[property_name]
+            # remove all properties with that identifier
+            for match in matches:
+                self.text = self.text.replace(match, "")
+            # replacing may leave multiple adjacent whitespaces - remove those
+            self.text = " ".join(self.text.split())
+            return
+        
         if real_property_value:
             self.properties[property_name] = real_property_value
         else:
             self.properties[property_name] = new_property_value
-        re_replace_prop = re.compile(r"\b(%s:.+?)(?:$|\s)" % property_name, re.UNICODE)
-        matches = re_replace_prop.findall(self.text)
+        
         if len(matches) > 0:
-            # only replace the first occurrence
-            self.text = self.text.replace(matches[0], "%s:%s" % (property_name, new_property_value))
+            # replacing a property: only replace the first occurrence
+            self.text = self.text.replace(matches[0], "%s:%s" % (property_name, new_property_value), 1)
             # and remove all further occurrences
             for match in matches[1:]:
                 self.text = self.text.replace(match, "")
         else:
+            # adding a new property
             self.text = self.text.strip() + " %s:%s" % (property_name, new_property_value)
     
+    
     def parse(self):
+        """executes the different parsers
+        """
         parse_fns = dir(parsers)
         for p in parse_fns:
             if p.startswith("parse"):
                 getattr(parsers, p)(self)
     
+    
     def fix_properties(self):
+        """normalizes property names and transforms date properties to a readable / managable form
+        """
         props = self.properties
         date_props = ["due", "done", "created"]
         # fix properties, if possible
