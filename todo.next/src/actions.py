@@ -11,6 +11,7 @@ from __future__ import print_function
 from cli_helpers import ColorRenderer, get_editor_input, open_editor
 from date_trans import to_date, is_same_day, from_date
 from parsers import re_urls
+from borg import ConfigBorg
 
 import collections, datetime, re, os, glob
 from itertools import groupby
@@ -34,7 +35,7 @@ def cmd_list(tl, args):
     * regex: if given, the search string is interpreted as a regular expression
     
     """
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
         if args.regex:
             if not args.search_string:
                 # does not make sense
@@ -59,7 +60,7 @@ def cmd_add(tl, args):
     Required fields of :param:`args`:
     * text: the text of the todo item to add
     """
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
         if not args.text:
             # no arguments given, open editor and let user enter data there
             output = get_editor_input("")
@@ -82,7 +83,7 @@ def cmd_remove(tl, args):
     * items: the index number of the items to remove
     * force: if given, confirmation is not requested
     """
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
         item_list = tl.get_items_by_index_list(args.items)
         if not args.force:
             print("Do you really want to remove the following item(s):")
@@ -107,7 +108,7 @@ def cmd_done(tl, args):
     Required fields of :param:`args`:
     * items: the index number of the items to set to 'done'
     """
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
         print("Marked following todo items as 'done':")
         for item in tl.get_items_by_index_list(args.items):
             tl.set_to_done(item)
@@ -121,7 +122,7 @@ def cmd_reopen(tl, args):
     Required fields of :param:`args`:
     * items: the index numbers of the items to reopen
     """
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
         print("Setting the following todo items to open again:")
         for item in tl.get_items_by_index_list(args.items):
             tl.reopen(item)
@@ -138,9 +139,10 @@ def cmd_edit(tl, args):
     
     * item: the index number of the item to edit
     """
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
+        conf = ConfigBorg()
         if not args.item:
-            open_editor(args.todo_file)
+            open_editor(conf.todo_file)
             quit(0)
         item = tl.get_item_by_index(args.item)
         print(cr.render(item))
@@ -163,7 +165,7 @@ def cmd_delegated(tl, args):
     * delegate: for filtering the name used for denoting a delegate
     * all: if given, also the done todos are shown
     """
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
         to_list = collections.defaultdict(list)
         for item in tl.list_items():
             if not args.all and (item.done or item.is_report):
@@ -187,7 +189,7 @@ def cmd_tasked(tl, args):
     * initiator: for filtering the name used for denoting the initiator
     * all: if given, also the done todos are shown
     """
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
         from_list = collections.defaultdict(list)
         for item in tl.list_items():
             if not args.all and (item.done or item.is_report):
@@ -210,7 +212,7 @@ def cmd_overdue(tl, args):
     
     Nor :param:`args` arguments are required.
     """
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
         print("Overdue todo items:")
         for item in tl.list_items(lambda x: not x.done and x.is_overdue()):
             print(" ", cr.render(item))
@@ -222,7 +224,7 @@ def cmd_report(tl, args):
     Required fields of :param:`args`:
     * date: either a date or a string like 'tomorrow' or '*', default 'today'
     """
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
         if args.date:
             args.date = to_date(args.date)
         # get list of done and report items
@@ -252,7 +254,7 @@ def cmd_agenda(tl, args):
     Required fields of :param:`args`:
     * date: either a date or a string like 'tomorrow' or '*', default 'today'
     """
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
         agenda_items = []
         # if not set, get agenda for today
         list_all = False
@@ -290,7 +292,8 @@ def cmd_config(tl, args):
     
     Required fields of :param:`args`:
     """
-    open_editor(args.config_file)
+    conf = ConfigBorg()
+    open_editor(conf.config_file)
 
 
 def cmd_prio(tl, args):
@@ -300,7 +303,7 @@ def cmd_prio(tl, args):
     * items: the index numbers of the items to (re)prioritize
     * priority: the new priority ('A'..'Z' or '+'/'-') or 'x' (for removing)
     """
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
         prio_items = tl.get_items_by_index_list(args.items)
         new_prio = args.priority
         if not re_prio.match(new_prio):
@@ -345,7 +348,7 @@ def cmd_stats(tl, args):
     # write # open / # done / # prioritized / # overdue items
     counter = collections.defaultdict(int)
     delegates = set()
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
         for item in tl.list_items():
             counter["total"] += 1
             if item.done:
@@ -374,7 +377,7 @@ def cmd_open(tl, args):
     Required fields of :param:`args`:
     * item: the index number of the item that has either an URL or file attached
     """
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
         item = tl.get_item_by_index(args.item)
         nr = 0
         actions = {}
@@ -418,7 +421,7 @@ def cmd_project(tl, args):
     * all: if given, also the done todo items are displayed
     """
     # lists todo items per project (like list, only with internal grouping)
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
         project_dict = collections.defaultdict(list)
         for item in tl.list_items(lambda x: True if args.all or not (x.done or x.is_report) else False):
             for project in item.projects:
@@ -443,7 +446,7 @@ def cmd_context(tl, args):
     * all: if given, also the done todo items are displayed
     """
     # lists todo items per context (like list, only with internal grouping)
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
         context_dict = collections.defaultdict(list)
         for item in tl.list_items(lambda x: True if args.all or not (x.done or x.is_report) else False):
             for context in item.contexts:
@@ -465,10 +468,11 @@ def cmd_backup(tl, args):
     
     Required fields of :param:`args`:
     """
-    template = os.path.basename(args.todo_file)
+    conf = ConfigBorg()
+    template = os.path.basename(conf.todo_file)
     filename = datetime.datetime.now().strftime("%Y-%m-%d_%H%M_" + template)
     # backup directory can be relative to todo file directory
-    backup_folder = os.path.join(os.path.dirname(args.todo_file), args.config.get("archive", "backup_dir"))
+    backup_folder = os.path.join(os.path.dirname(conf.todo_file), conf.backup_dir)
     # if not existing, create it
     if not os.path.exists(backup_folder):
         os.makedirs(backup_folder)
@@ -486,7 +490,7 @@ def cmd_backup(tl, args):
         else:
             print("  Overwriting %s..." % dst_fn)
     # copying the todo file to the destination
-    with codecs.open(args.todo_file, "r", "utf-8") as src:
+    with codecs.open(conf.todo_file, "r", "utf-8") as src:
         print("  Copying todo file to %s..." % dst_fn)
         with codecs.open(dst_fn, "w", "utf-8") as dst:
             dst.write(src.read())
@@ -501,9 +505,10 @@ def cmd_archive(tl, args):
     
     Required fields of :param:`args`:
     """
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
+        conf = ConfigBorg()
         # base directory of todo file
-        base_dir = os.path.dirname(args.todo_file)
+        base_dir = os.path.dirname(conf.todo_file)
         
         # get list of done and report items
         report_list = list(tl.list_items(lambda x: x.done or x.is_report))
@@ -518,9 +523,9 @@ def cmd_archive(tl, args):
         for item in report_list:
             item_date = item.done_date or na_date
             if is_same_day(item_date, na_date):
-                dst_fn = args.config.get("archive", "archive_unsorted_filename")
+                dst_fn = conf.archive_unsorted_filename
             else:
-                dst_fn = os.path.join(base_dir, item_date.strftime(args.config.get("archive", "archive_filename_scheme")))
+                dst_fn = os.path.join(base_dir, item_date.strftime(conf.archive_filename_scheme))
             
             # if not existing, create it
             if not os.path.exists(os.path.dirname(dst_fn)):
@@ -551,7 +556,7 @@ def cmd_delay(tl, args):
     * date: either a date or a string like 'tomorrow', default '1d' (delays for 1 day)
     * force: if given, confirmation is not requested
     """
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
         item = tl.get_item_by_index(args.item)
         if item.due_date:
             new_date = to_date(args.date, item.due_date)
@@ -595,7 +600,8 @@ def cmd_search(tl, args):
     * search_string: a search string
     * regex: if given, the search string is interpreted as a regular expression
     """
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
+        conf = ConfigBorg()
         if args.regex:
             # search for regex
             re_search = re.compile(args.search_string, re.UNICODE)
@@ -604,17 +610,17 @@ def cmd_search(tl, args):
         # first, look at current todo list
         for item in tl.list_items():
             if args.regex and re_search.findall(item.text):
-                all_matches.append((args.todo_file, item))
+                all_matches.append((conf.todo_file, item))
             elif args.search_string in item.text: 
-                all_matches.append((args.todo_file, item))
+                all_matches.append((conf.todo_file, item))
         
         # get file list of all archive files by replacing all %x-variables with '*' and
         # let glob do the hard work
-        file_pattern = re_replace_archive_vars.sub("*", args.config.get("archive", "archive_filename_scheme"))
-        root_dir = os.path.dirname(args.todo_file)
+        file_pattern = re_replace_archive_vars.sub("*", conf.archive_filename_scheme)
+        root_dir = os.path.dirname(conf.todo_file)
         file_list = glob.glob(os.path.join(root_dir, file_pattern))
         # add the file for items without done timestamp
-        unsorted_file = os.path.join(root_dir, args.config.get("archive", "archive_unsorted_filename"))
+        unsorted_file = os.path.join(root_dir, conf.archive_unsorted_filename)
         if os.path.exists(unsorted_file):
             file_list.append(unsorted_file)
         
@@ -644,7 +650,8 @@ def cmd_attach(tl, args):
     * item: the index number of the item to which something should be attached
     * location: either a (relative) file name or a (fully qualified) URL
     """
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
+        conf = ConfigBorg()
         item = tl.get_item_by_index(args.item)
         if re_urls.match(args.location):
             # we got an URL
@@ -655,7 +662,12 @@ def cmd_attach(tl, args):
             tl.reindex() 
         else:
             # get path relative to todo file
-            path = os.path.relpath(args.location, os.path.dirname(args.todo_filename))
+            try:
+                path = os.path.relpath(args.location, os.path.dirname(conf.todo_file))
+            except ValueError:
+                # path is on other rive than reference location
+                path = os.path.abspath(args.location)
+                
             if not os.path.exists(path):
                 print("File path '%s' does not exist" % path)
                 quit(-1)
@@ -677,7 +689,7 @@ def cmd_detach(tl, args):
     Required fields of :param:`args`:
     * item: the index number of the item from which something should be detached
     """
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
         item = tl.get_item_by_index(args.item)
         attmnt_list = []
         attmnt_list.extend(("url", url) for url in item.urls)
@@ -715,7 +727,7 @@ def cmd_check(tl, args):
     
     Required fields of :param:`args`:
     """
-    with ColorRenderer(args) as cr:
+    with ColorRenderer() as cr:
         nr = 0
         for item, warnings in tl.check_items():
             nr += 1

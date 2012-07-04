@@ -22,4 +22,22 @@ sort = done_or_todo overdue_flag priority_flag done_date due_date created_date a
 # properties that will be displayed shortened
 shorten = files urls due done
 # properties that will be suppressed on display
-suppress = created
+suppress = created id
+
+# colors for CLI output
+# format: foreground background style
+# for parts of an item
+col_context = - RED -
+col_project = - MAGENTA -
+col_delegate = - YELLOW BRIGHT
+col_id = WHITE BLUE DIM
+# for whole items
+col_item_prio = WHITE BLACK BRIGHT
+col_item_overdue = RED BLACK BRIGHT
+col_item_today = YELLOW BLACK BRIGHT
+col_item_report = CYAN BLACK DIM
+col_item_done = GREEN BLACK NORMAL
+
+[extensions]
+# id support - each todo item is assigned a unique id
+id_support = True

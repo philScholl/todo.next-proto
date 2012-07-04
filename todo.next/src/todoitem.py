@@ -71,10 +71,20 @@ class TodoItem(object):
         return self.get_date("created")
     
     
+    def get_id(self):
+        return self.properties.get("id", None)
+    
+    def set_id(self, id_str):
+        if not id_str:
+            del self.properties["id"]
+        else:
+            self.properties["id"] = id_str
+        self.replace_or_add_prop("id", id_str)
+    
     due_date = property(fget = get_due_date, fset = set_due_date)
     done_date = property(fget = get_done_date, fset = set_done_date)
     created_date = property(fget = get_created_date, fset = set_created_date)
-    
+    tid = property(fget = get_id, fset = set_id)
     
     def is_overdue(self, reference_date = None):
         if not reference_date:

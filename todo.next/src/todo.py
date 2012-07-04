@@ -7,6 +7,7 @@
 """
 from __future__ import print_function
 import actions
+from borg import ConfigBorg
 from todolist import TodoList
 from cli_helpers import get_doc_help, get_doc_param, get_doc_description
 import argparse, os, codecs, sys
@@ -173,10 +174,20 @@ if __name__ == '__main__':
     
     # parse the command line parameters
     args = parser.parse_args()
-    # set additional data that could be important for actions
-    args.config = config
-    args.config_file = config_file
-    args.todo_file = todo_filename
+#    # set additional data that could be important for actions
+#    args.config = config
+#    args.config_file = config_file
+#    args.todo_file = todo_filename
+    
+    cconf = ConfigBorg()
+    cconf.id_support = config.getboolean("extensions", "id_support")
+    cconf.config_file = config_file
+    cconf.todo_file = todo_filename
+    cconf.shorten = config.get("display", "shorten").lower().split()
+    cconf.suppress = config.get("display", "suppress").lower().split()
+    cconf.backup_dir = config.get("archive", "backup_dir")
+    cconf.archive_unsorted_filename = config.get("archive", "archive_unsorted_filename")
+    cconf.archive_filename_scheme = config.get("archive", "archive_filename_scheme")
     
     with TodoList(todo_filename) as tl:
         try:

@@ -6,8 +6,14 @@ from __future__ import print_function
 
 from date_trans import from_date
 from todoitem import TodoItem
-import codecs
-import datetime
+
+import datetime, codecs, hashlib, random
+from itertools import groupby
+from borg import ConfigBorg
+
+ALPHABET = "abcdefghijklmnopqrstuvwxyz"
+BASE = len(ALPHABET)
+MAXLEN = 3
 
 class TodoList(object):
     """class representing a todo list that's stored in a ``todo.next`` file.
@@ -21,7 +27,13 @@ class TodoList(object):
         """
         self.todofile = todofile
         self.todolist = []
+        self.tids = {}
         self.dirty = False
+        self.conf = ConfigBorg()
+        
+        if self.conf.id_support:
+            # initialize randomizer for tid generation
+            random.seed()
         # read todo file items
         with codecs.open(self.todofile, "r", "utf-8") as fp:
             for line in fp:
@@ -29,7 +41,13 @@ class TodoList(object):
                 if not line:
                     continue
                 # append items to list
-                self._append(line)
+                item = self._append(line)
+                if item.tid:
+                    if item.tid in self.tids:
+                        # duplicate ID - what to do now?
+                        pass
+                    else:
+                        self.tids[item.tid] = item
         # sort list
         self.sort_list()
     
@@ -93,6 +111,34 @@ class TodoList(object):
         self.sorted = False
         return item
 
+    
+    def create_tid(self, item):
+        """creates a random 4-letter tid
+        
+        :param item: a todo item
+        :type item: :class:`TodoItem`
+        :return: a 4-letter tid
+        :rtype: str 
+        """
+        # for generating different tids for same text
+        salt = random.choice(ALPHABET)
+        # get hash
+        md5 = hashlib.new("md5", salt + item.text)
+        # get base-26 MAXLEN-digit nr
+        nr = int(md5.hexdigest()[:8], 16) % (26 ** MAXLEN)
+        
+        # get base-26 representation of nr
+        s = []
+        t = MAXLEN - 1
+        while t >= 0:
+            bcp = int(pow(BASE, t))
+            a = int(nr / bcp) % BASE
+            s.append(ALPHABET[a:a+1])
+            nr = nr - (a * bcp)
+            t -= 1
+        
+        return "".join(s)
+
 
     def add_item(self, item_str):
         """exposed add item method, adds a new todo item to the todo file and reindexes
@@ -112,6 +158,9 @@ class TodoList(object):
             item.replace_or_add_prop("done", now_str, now)
         else:
             item.replace_or_add_prop("created", now_str, now)
+        # if item doesn't have an tid assigned, do it here automatically
+        if self.conf.id_support and not item.tid:
+            item.replace_or_add_prop("id", self.create_tid(item))
         # the new item is sorted into the list
         self.reindex()
         # something has changed
@@ -126,11 +175,21 @@ class TodoList(object):
         :return: generator, yield tuple ``(item, warnings)``
         :rtype: yields (item, list(str))
         """
+        tids = []
         for item in self.list_items():
+            if item.tid:
+                tids.append((item.tid, item))
             warnings = item.check(False)
             if warnings:
                 yield (item, warnings)
-    
+        if self.conf.id_support:
+            # check for duplicate tids
+            for key, group in groupby(tids, key=lambda x: x[0]):
+                group = [item for _, item in group]
+                if len(group) > 1:
+                    for item in group:
+                        yield (item, ["Item has duplicate key %s" % key,])                    
+
 
     def replace_or_add_prop(self, item, prop_name, new_prop_val, real_prop_val = None):
         """replaces a property in the item text or, if already existent, updates it.

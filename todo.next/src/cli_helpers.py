@@ -11,6 +11,7 @@ version of todo.next.
 from __future__ import print_function
 
 from date_trans import shorten_date
+from borg import ConfigBorg
 
 from colorama import init, deinit, Fore, Back, Style #@UnresolvedImport
 import re, tempfile, subprocess, os, codecs, time, sys, urlparse
@@ -19,6 +20,13 @@ import re, tempfile, subprocess, os, codecs, time, sys, urlparse
 re_docstring_param = re.compile("^\s*\*(.+?)\:(.+?)$", re.UNICODE | re.MULTILINE)
 # regex for finding description
 re_docstring_desc = re.compile("^\s*\:description\:(.+?)^\s*$", re.UNICODE | re.MULTILINE | re.DOTALL)
+
+re_replace_created = re.compile(r"\b(created:[^\s]+?)(?=$|\s)", re.UNICODE)
+re_replace_done = re.compile(r"\b(done:[^\s]+?)(?=$|\s)", re.UNICODE)
+re_replace_due = re.compile(r"\b(due:[^\s]+?)(?=$|\s)", re.UNICODE)
+re_replace_tid = re.compile(r"\b(id:[^\s]+?)(?=$|\s)", re.UNICODE)
+
+RESETMARKER = "#resetmarker"
 
 def get_doc_description(func):
     """returns the first line and the lines prepended with ``:description:`` followed by an empty line
@@ -149,9 +157,9 @@ def get_editor_input(initial_text):
 class ColorRenderer(object):
     """
     """
-    def __init__(self, args = None):
+    def __init__(self):
+        self.conf = ConfigBorg()
         # initialize colorama
-        self.args = args
         init()
     
     def __enter__(self):
@@ -164,56 +172,55 @@ class ColorRenderer(object):
         return False
     
     def wrap_context(self, context):
-        return Back.RED + context + Back.BLACK + "#resetmarker" #@UndefinedVariable
+        return Back.RED + context + RESETMARKER #@UndefinedVariable
     
     def wrap_project(self, project):
-        return Back.MAGENTA + project + Back.BLACK + "#resetmarker" #@UndefinedVariable
+        return Back.MAGENTA + project + RESETMARKER #@UndefinedVariable
     
     def wrap_delegate(self, delegate):
-        return Back.YELLOW + Style.BRIGHT + delegate + Back.BLACK + "#resetmarker" #@UndefinedVariable
+        return Back.YELLOW + Style.BRIGHT + delegate + RESETMARKER #@UndefinedVariable
     
+    def wrap_id(self, tid):
+        return Fore.WHITE + Style.DIM + Back.BLUE + tid + RESETMARKER #@UndefinedVariable
     
     def wrap_prioritized(self, line):
-        line = line.replace("#resetmarker", Fore.WHITE + Style.BRIGHT) #@UndefinedVariable
+        line = line.replace(RESETMARKER, Back.BLACK + Fore.WHITE + Style.BRIGHT) #@UndefinedVariable
         return Fore.WHITE + Style.BRIGHT + line + Style.RESET_ALL #@UndefinedVariable
     def wrap_overdue(self, line):
-        line = line.replace("#resetmarker", Fore.RED + Style.BRIGHT) #@UndefinedVariable
+        line = line.replace(RESETMARKER, Back.BLACK + Fore.RED + Style.BRIGHT) #@UndefinedVariable
         return Fore.RED + Style.BRIGHT + line + Style.RESET_ALL #@UndefinedVariable
     def wrap_today(self, line):
-        line = line.replace("#resetmarker", Fore.YELLOW + Style.BRIGHT) #@UndefinedVariable
+        line = line.replace(RESETMARKER, Back.BLACK + Fore.YELLOW + Style.BRIGHT) #@UndefinedVariable
         return Fore.YELLOW + Style.BRIGHT + line + Style.RESET_ALL #@UndefinedVariable
     def wrap_report(self, line):
-        line = line.replace("#resetmarker", Fore.CYAN + Style.DIM) #@UndefinedVariable
+        line = line.replace(RESETMARKER, Back.BLACK + Fore.CYAN + Style.DIM) #@UndefinedVariable
         return Fore.CYAN + Style.DIM + line + Style.RESET_ALL  #@UndefinedVariable
     def wrap_done(self, line):
-        line = line.replace("#resetmarker", Fore.GREEN + Style.NORMAL) #@UndefinedVariable
+        line = line.replace(RESETMARKER, Back.BLACK + Fore.GREEN + Style.NORMAL) #@UndefinedVariable
         return Fore.GREEN + Style.NORMAL + line + Style.RESET_ALL #@UndefinedVariable
     
     def clean_string(self, item):
-        # if we don't have the arguments / configuration options, we cannot make assumptions here
-        if not self.args:
-            return item.text
         text = item.text
-        conf = self.args.config
-        shorten = conf.get("display", "shorten").lower().split()
-        suppress = conf.get("display", "suppress").lower().split()
-        if "files" in shorten and "file" in item.properties:
+        
+        if "files" in self.conf.shorten and "file" in item.properties:
             file_name = item.properties.get("file") 
             if file_name:
                 text = text.replace("file:%s" % file_name, "[%s]"%os.path.basename(file_name))
-        if "urls" in shorten and item.urls:
+        if "urls" in self.conf.shorten and item.urls:
             for url in item.urls:
                 text = text.replace(url, "[%s]" % urlparse.urlsplit(url).netloc)
-        if "due" in shorten and item.due_date:
-            re_replace_due = re.compile(r"\b(due:[^\s]+?)(?=$|\s)", re.UNICODE)
+        if "due" in self.conf.shorten and item.due_date:
             text = re_replace_due.sub("due:"+shorten_date(item.due_date), text)
-        if "done" in shorten and item.done_date:
-            re_replace_done = re.compile(r"\b(done:[^\s]+?)(?=$|\s)", re.UNICODE)
+        if "done" in self.conf.shorten and item.done_date:
             text = re_replace_done.sub("done:"+shorten_date(item.done_date), text)
-        if "created" in suppress and item.created_date:
+        if "created" in self.conf.suppress and item.created_date:
             # we nearly never need to display the created property, so hide it
-            re_replace_created = re.compile(r"\b(created:[^\s]+?)(?=$|\s)")
             text = re_replace_created.sub("", text)
+        if item.tid:
+            # remove in in any case
+            text = re_replace_tid.sub("", text)
+        
+        # remove duplicate whitespace
         return " ".join(text.split())
     
     
@@ -231,11 +238,17 @@ class ColorRenderer(object):
         for tohi in item.delegated_from:
             tohi = "<<" + tohi
             text = text.replace(tohi, self.wrap_delegate(tohi))
-    
+        
         if item.nr == None:
-            listitem = "[   ] %s" % text
+            prefix = "[   ] "
         else:
-            listitem = "[% 3d] %s" % (item.nr, text)
+            prefix = "[% 3d] " % item.nr
+        
+        if self.conf.id_support and item.tid:
+            tid = self.wrap_id(item.tid) + " "
+        else:
+            tid = ""
+        listitem = "%s%s%s" % (prefix, tid, text)
 
         if item.is_report:
             return self.wrap_report(listitem)
@@ -247,4 +260,4 @@ class ColorRenderer(object):
             return self.wrap_today(listitem)
         if item.priority:
             return self.wrap_prioritized(listitem)
-        return listitem.replace("#resetmarker", Style.NORMAL + Fore.WHITE) #@UndefinedVariable
+        return listitem.replace(RESETMARKER, Back.BLACK + Style.NORMAL + Fore.WHITE) #@UndefinedVariable
