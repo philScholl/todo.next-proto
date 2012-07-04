@@ -8,6 +8,7 @@
 from __future__ import print_function
 import actions
 from todolist import TodoList
+from cli_helpers import get_doc_help, get_doc_param, get_doc_description
 import argparse, os, codecs, sys
 import ConfigParser
 
@@ -71,103 +72,103 @@ if __name__ == '__main__':
         description="Todo.txt file CLI interface", 
         epilog="For more, see https://github.com/philScholl/todo.next-proto",
         )
-    parser.add_argument("-v", action="count")
+    parser.add_argument("-v", action="count", help="verbose flag")
     
     # -------------------------------------------------
     # Maintenance functionality
     # -------------------------------------------------
     
-    subparser = parser.add_subparsers(title="simple todo item management", help = "", dest = "command")
+    subparser = parser.add_subparsers(title="commands", help = "", dest = "command")
     
-    parse_add = subparser.add_parser("add", help=actions.get_oneliner(actions.cmd_add))
-    parse_add.add_argument("text", type=to_unicode, help="the item to add", nargs="*")
+    parse_add = subparser.add_parser("add", help=get_doc_help(actions.cmd_add), description=get_doc_description(actions.cmd_add))
+    parse_add.add_argument("text", type=to_unicode, nargs="*", help=get_doc_param(actions.cmd_add, "text"))
     
-    parse_attach = subparser.add_parser("attach", help=actions.get_oneliner(actions.cmd_attach))
-    parse_attach.add_argument("item", type=int, help="the index number of the item to which something should be attached")
-    parse_attach.add_argument("location", type=str, help="either a (relative) file name or a (fully qualified) URL")
+    parse_attach = subparser.add_parser("attach", help=get_doc_help(actions.cmd_attach), description=get_doc_description(actions.cmd_attach))
+    parse_attach.add_argument("item", type=int, help=get_doc_param(actions.cmd_attach, "item"))
+    parse_attach.add_argument("location", type=str, help=get_doc_param(actions.cmd_attach, "location"))
     
-    parse_delay = subparser.add_parser("delay", help=actions.get_oneliner(actions.cmd_delay))
-    parse_delay.add_argument("item", type=int, help="the index number of the item to delay", nargs="?")
-    parse_delay.add_argument("date", type=str, help="either a date or a string like 'tomorrow', default '1d' (delays for 1 day)", nargs="?")
-    parse_delay.add_argument("--force", action="store_true", help="if given, confirmation is not requested")
+    parse_delay = subparser.add_parser("delay", help=get_doc_help(actions.cmd_delay), description=get_doc_description(actions.cmd_delay))
+    parse_delay.add_argument("item", type=int, nargs="?", help=get_doc_param(actions.cmd_delay, "item"))
+    parse_delay.add_argument("date", type=str, nargs="?", help=get_doc_param(actions.cmd_delay, "date"))
+    parse_delay.add_argument("--force", action="store_true", help=get_doc_param(actions.cmd_delay, "force"))
     
-    parse_delegated = subparser.add_parser("delegated", help=actions.get_oneliner(actions.cmd_delegated))
-    parse_delegated.add_argument("delegate", type=to_unicode, help="for filtering the name used for denoting a delegate", nargs="?")
-    parse_delegated.add_argument("--all", action="store_true", help="if given, also the done todos are shown")
+    parse_delegated = subparser.add_parser("delegated", help=get_doc_help(actions.cmd_delegated), description=get_doc_description(actions.cmd_delegated))
+    parse_delegated.add_argument("delegate", type=to_unicode, nargs="?", help=get_doc_param(actions.cmd_delegated, "delegate"))
+    parse_delegated.add_argument("--all", action="store_true", help=get_doc_param(actions.cmd_delegated, "all"))
     
-    parse_detach = subparser.add_parser("detach", help=actions.get_oneliner(actions.cmd_detach))
-    parse_detach.add_argument("item", type=int, help="the index number of the item from which something should be detached")
+    parse_detach = subparser.add_parser("detach", help=get_doc_help(actions.cmd_detach), description=get_doc_description(actions.cmd_detach))
+    parse_detach.add_argument("item", type=int, help=get_doc_param(actions.cmd_detach, "item"))
 
-    parse_done = subparser.add_parser("done", help=actions.get_oneliner(actions.cmd_done))
-    parse_done.add_argument("items", type=int, help="the index number of the items to set to 'done'", nargs="+")
+    parse_done = subparser.add_parser("done", help=get_doc_help(actions.cmd_done), description=get_doc_description(actions.cmd_done))
+    parse_done.add_argument("items", type=int, nargs="+", help=get_doc_param(actions.cmd_done, "items"))
 
-    parse_edit = subparser.add_parser("edit", help=actions.get_oneliner(actions.cmd_edit), description="This action will open an editor. If you're done editing, save the file and close the editor.")
-    parse_edit.add_argument("item", type=int, help="the index number of the item to edit", nargs="?")
+    parse_edit = subparser.add_parser("edit", help=get_doc_help(actions.cmd_edit), description=get_doc_description(actions.cmd_edit))
+    parse_edit.add_argument("item", type=int, nargs="?", help=get_doc_param(actions.cmd_edit, "item"))
 
-    parse_list = subparser.add_parser("list", help=actions.get_oneliner(actions.cmd_list)) #, aliases=["ls"]
-    parse_list.add_argument("search_string", type=to_unicode, help="a search string", nargs="?")
-    parse_list.add_argument("--all", action="store_true", help="if given, also the done todo and report items are shown")
-    parse_list.add_argument("--regex", action="store_true", help="if given, the search string is interpreted as a regular expression")
+    parse_list = subparser.add_parser("list", help=get_doc_help(actions.cmd_list), description=get_doc_description(actions.cmd_list)) #, aliases=["ls"]
+    parse_list.add_argument("search_string", type=to_unicode, nargs="?", help=get_doc_param(actions.cmd_list, "search_string"))
+    parse_list.add_argument("--all", action="store_true", help=get_doc_param(actions.cmd_list, "all"))
+    parse_list.add_argument("--regex", action="store_true", help=get_doc_param(actions.cmd_list, "regex"))
 
-    parse_open = subparser.add_parser("open", help=actions.get_oneliner(actions.cmd_open))
-    parse_open.add_argument("item", type=int, help="the index number of the item that has either an URL or file attached")
+    parse_open = subparser.add_parser("open", help=get_doc_help(actions.cmd_open), description=get_doc_description(actions.cmd_open))
+    parse_open.add_argument("item", type=int, help=get_doc_param(actions.cmd_open, "item"))
     
-    parse_prio = subparser.add_parser("prio", help=actions.get_oneliner(actions.cmd_prio))
-    parse_prio.add_argument("items", type=int, help="the index number of the items to (re)prioritize", nargs="+")
-    parse_prio.add_argument("priority", type=str, help="the new priority ('A'..'Z' or '+'/'-') or 'x' (for removing)")
+    parse_prio = subparser.add_parser("prio", help=get_doc_help(actions.cmd_prio), description=get_doc_description(actions.cmd_prio))
+    parse_prio.add_argument("items", type=int, nargs="+", help=get_doc_param(actions.cmd_prio, "items"))
+    parse_prio.add_argument("priority", type=str, help=get_doc_param(actions.cmd_prio, "priority"))
     
-    parse_del = subparser.add_parser("remove", help=actions.get_oneliner(actions.cmd_remove))
-    parse_del.add_argument("items", type=int, help="the index number of the items to remove", nargs="+")
-    parse_del.add_argument("--force", action="store_true", help="if given, confirmation is not requested")
+    parse_del = subparser.add_parser("remove", help=get_doc_help(actions.cmd_remove), description=get_doc_description(actions.cmd_remove))
+    parse_del.add_argument("items", type=int, nargs="+", help=get_doc_param(actions.cmd_remove, "items"))
+    parse_del.add_argument("--force", action="store_true", help=get_doc_param(actions.cmd_remove, "force"))
 
-    parse_reopen = subparser.add_parser("reopen", help=actions.get_oneliner(actions.cmd_reopen))
-    parse_reopen.add_argument("items", type=int, help="the index number of the items to reopen", nargs="+")
+    parse_reopen = subparser.add_parser("reopen", help=get_doc_help(actions.cmd_reopen), description=get_doc_description(actions.cmd_reopen))
+    parse_reopen.add_argument("items", type=int, nargs="+", help=get_doc_param(actions.cmd_reopen, "items"))
 
-    parse_tasked = subparser.add_parser("tasked", help=actions.get_oneliner(actions.cmd_tasked))
-    parse_tasked.add_argument("initiator", type=to_unicode, help="for filtering the name used for denoting the initiator", nargs="?")
-    parse_tasked.add_argument("--all", action="store_true", help="if given, also the done todos are shown")
+    parse_tasked = subparser.add_parser("tasked", help=get_doc_help(actions.cmd_tasked), description=get_doc_description(actions.cmd_tasked))
+    parse_tasked.add_argument("initiator", type=to_unicode, nargs="?", help=get_doc_param(actions.cmd_tasked, "initiator"))
+    parse_tasked.add_argument("--all", action="store_true", help=get_doc_param(actions.cmd_tasked, "all"))
     
     # -------------------------------------------------
     # Overview functionality
     # -------------------------------------------------
 
-    parse_agenda = subparser.add_parser("agenda", help=actions.get_oneliner(actions.cmd_agenda))
-    parse_agenda.add_argument("date", type=str, help="either a date or a string like 'tomorrow' or '*', default 'today'", nargs="?")
+    parse_agenda = subparser.add_parser("agenda", help=get_doc_help(actions.cmd_agenda), description=get_doc_description(actions.cmd_agenda))
+    parse_agenda.add_argument("date", type=str, nargs="?", help=get_doc_param(actions.cmd_agenda, "date"))
 
-    parse_context = subparser.add_parser("context", help=actions.get_oneliner(actions.cmd_context))
-    parse_context.add_argument("name", type=str, help="the name of the context to display", nargs="?")
-    parse_context.add_argument("--all", action="store_true", help="if given, also the done todo items are displayed")
+    parse_context = subparser.add_parser("context", help=get_doc_help(actions.cmd_context), description=get_doc_description(actions.cmd_context))
+    parse_context.add_argument("name", type=str, help=get_doc_param(actions.cmd_context, "name"), nargs="?")
+    parse_context.add_argument("--all", action="store_true", help=get_doc_param(actions.cmd_context, "all"))
     
-    parse_overdue = subparser.add_parser("overdue", help=actions.get_oneliner(actions.cmd_overdue))
+    parse_overdue = subparser.add_parser("overdue", help=get_doc_help(actions.cmd_overdue), description=get_doc_description(actions.cmd_overdue))
     
-    parse_project = subparser.add_parser("project", help=actions.get_oneliner(actions.cmd_project))
-    parse_project.add_argument("name", type=str, help="the name of the project to display", nargs="?")
-    parse_project.add_argument("--all", action="store_true", help="if given, also the done todo items are displayed")
+    parse_project = subparser.add_parser("project", help=get_doc_help(actions.cmd_project), description=get_doc_description(actions.cmd_project))
+    parse_project.add_argument("name", type=str, nargs="?", help=get_doc_param(actions.cmd_project, "name"))
+    parse_project.add_argument("--all", action="store_true", help=get_doc_param(actions.cmd_project, "all"))
 
-    parse_report = subparser.add_parser("report", help=actions.get_oneliner(actions.cmd_report))
-    parse_report.add_argument("date", type=str, help="either a date or a string like 'tomorrow' or '*', default 'today'", nargs="?")
+    parse_report = subparser.add_parser("report", help=get_doc_help(actions.cmd_report), description=get_doc_description(actions.cmd_report))
+    parse_report.add_argument("date", type=str, nargs="?", help=get_doc_param(actions.cmd_report, "date"))
     
-    parse_search = subparser.add_parser("search", help=actions.get_oneliner(actions.cmd_search))
-    parse_search.add_argument("search_string", type=to_unicode, help="a search string")
-    parse_search.add_argument("--regex", action="store_true", help="if given, the search string is interpreted as a regular expression")
+    parse_search = subparser.add_parser("search", help=get_doc_help(actions.cmd_search), description=get_doc_description(actions.cmd_search))
+    parse_search.add_argument("search_string", type=to_unicode, help=get_doc_param(actions.cmd_search, "search_string"))
+    parse_search.add_argument("--regex", action="store_true", help=get_doc_param(actions.cmd_search, "regex"))
 
-    parse_stats = subparser.add_parser("stats", help=actions.get_oneliner(actions.cmd_stats))
+    parse_stats = subparser.add_parser("stats", help=get_doc_help(actions.cmd_stats), description=get_doc_description(actions.cmd_stats))
 
     # -------------------------------------------------
     # Maintenance functionality
     # -------------------------------------------------
     
-    parse_archive = subparser.add_parser("archive", help=actions.get_oneliner(actions.cmd_archive))
+    parse_archive = subparser.add_parser("archive", help=get_doc_help(actions.cmd_archive), description=get_doc_description(actions.cmd_archive))
     #parse_archive.add_argument("to_file", type=str, help="the file where all archived todo items are appended", nargs="?")
 
-    parse_backup = subparser.add_parser("backup", help=actions.get_oneliner(actions.cmd_backup))
+    parse_backup = subparser.add_parser("backup", help=get_doc_help(actions.cmd_backup), description=get_doc_description(actions.cmd_backup))
     parse_backup.add_argument("filename", type=str, help="the name of the backup file [optional]", nargs="?")
     
-    parse_check = subparser.add_parser("check", help=actions.get_oneliner(actions.cmd_check))
+    parse_check = subparser.add_parser("check", help=get_doc_help(actions.cmd_check), description=get_doc_description(actions.cmd_check))
     
-    #parse_clean = subparser.add_parser("clean", help=actions.get_oneliner(actions.cmd_clean))
+    #parse_clean = subparser.add_parser("clean", help=get_doc_help(actions.cmd_clean), description=get_doc_description(actions.cmd_clean))
     
-    parse_config = subparser.add_parser("config", help=actions.get_oneliner(actions.cmd_config))
+    parse_config = subparser.add_parser("config", help=get_doc_help(actions.cmd_config), description=get_doc_description(actions.cmd_config))
     
     
     # parse the command line parameters

@@ -19,21 +19,20 @@ from todoitem import TodoItem
 from todolist import TodoList
 
 # regex for detecting priority argument in CLI
-re_prio = re.compile("[xA-Z+-]")
+re_prio = re.compile("[xA-Z+-]", re.UNICODE)
 # regex for replacing archive scheme variables with "*"
-re_replace_archive_vars = re.compile("%\D")
-
-def get_oneliner(func):
-    try:
-        return func.__doc__.split("\n")[0].strip()
-    except:
-        return "n/a"
-
+re_replace_archive_vars = re.compile("%\D", re.UNICODE)
 
 def cmd_list(tl, args):
     """lists all items that match the given expression
     
-    If no search query is given, all items are listed.
+    :description: If no search query is given, all items are listed.
+    
+    Required fields of :param:`args`:
+    * search_string: a search string
+    * all: if given, also the done todo and report items are shown
+    * regex: if given, the search string is interpreted as a regular expression
+    
     """
     with ColorRenderer(args) as cr:
         if args.regex:
@@ -55,7 +54,10 @@ def cmd_list(tl, args):
 def cmd_add(tl, args):
     """adds a new todo item to the todo list
         
-    The source of the todo item can either be the command line or an editor.
+    :description: The source of the todo item can either be the command line or an editor.
+    
+    Required fields of :param:`args`:
+    * text: the text of the todo item to add
     """
     with ColorRenderer(args) as cr:
         if not args.text:
@@ -75,6 +77,10 @@ def cmd_add(tl, args):
 
 def cmd_remove(tl, args):
     """removes one or more items from the todo list
+    
+    Required fields of :param:`args`:
+    * items: the index number of the items to remove
+    * force: if given, confirmation is not requested
     """
     with ColorRenderer(args) as cr:
         item_list = tl.get_items_by_index_list(args.items)
@@ -97,6 +103,9 @@ def cmd_remove(tl, args):
 
 def cmd_done(tl, args):
     """sets the status of one or more todo items to 'done'
+    
+    Required fields of :param:`args`:
+    * items: the index number of the items to set to 'done'
     """
     with ColorRenderer(args) as cr:
         print("Marked following todo items as 'done':")
@@ -108,6 +117,9 @@ def cmd_done(tl, args):
 
 def cmd_reopen(tl, args):
     """reopens one or more items marked as 'done'
+    
+    Required fields of :param:`args`:
+    * items: the index numbers of the items to reopen
     """
     with ColorRenderer(args) as cr:
         print("Setting the following todo items to open again:")
@@ -119,6 +131,12 @@ def cmd_reopen(tl, args):
 
 def cmd_edit(tl, args):
     """allows editing a given todo item
+    
+    :description: This action will open an editor. 
+        If you're done editing, save the file and close the editor or cancel
+        editing by pressing ``Ctrl+C``.
+    
+    * item: the index number of the item to edit
     """
     with ColorRenderer(args) as cr:
         if not args.item:
@@ -140,6 +158,10 @@ def cmd_edit(tl, args):
 
 def cmd_delegated(tl, args):
     """shows all todo items that have been delegated and wait for input
+    
+    Required fields of :param:`args`:
+    * delegate: for filtering the name used for denoting a delegate
+    * all: if given, also the done todos are shown
     """
     with ColorRenderer(args) as cr:
         to_list = collections.defaultdict(list)
@@ -160,6 +182,10 @@ def cmd_delegated(tl, args):
 
 def cmd_tasked(tl, args):
     """shows all open todo items that I am tasked with
+    
+    Required fields of :param:`args`:
+    * initiator: for filtering the name used for denoting the initiator
+    * all: if given, also the done todos are shown
     """
     with ColorRenderer(args) as cr:
         from_list = collections.defaultdict(list)
@@ -181,6 +207,8 @@ def cmd_tasked(tl, args):
 
 def cmd_overdue(tl, args):
     """shows all todo items that are overdue
+    
+    Nor :param:`args` arguments are required.
     """
     with ColorRenderer(args) as cr:
         print("Overdue todo items:")
@@ -190,6 +218,9 @@ def cmd_overdue(tl, args):
 
 def cmd_report(tl, args):
     """shows a daily report of all done and report items
+    
+    Required fields of :param:`args`:
+    * date: either a date or a string like 'tomorrow' or '*', default 'today'
     """
     with ColorRenderer(args) as cr:
         if args.date:
@@ -217,6 +248,9 @@ def cmd_report(tl, args):
 
 def cmd_agenda(tl, args):
     """displays an agenda for a given date
+    
+    Required fields of :param:`args`:
+    * date: either a date or a string like 'tomorrow' or '*', default 'today'
     """
     with ColorRenderer(args) as cr:
         agenda_items = []
@@ -253,12 +287,18 @@ def cmd_agenda(tl, args):
 
 def cmd_config(tl, args):
     """open todo.next configuration in editor
+    
+    Required fields of :param:`args`:
     """
     open_editor(args.config_file)
 
 
 def cmd_prio(tl, args):
     """assigns given items a priority (absolute like 'A' or relative like '-')
+    
+    Required fields of :param:`args`:
+    * items: the index numbers of the items to (re)prioritize
+    * priority: the new priority ('A'..'Z' or '+'/'-') or 'x' (for removing)
     """
     with ColorRenderer(args) as cr:
         prio_items = tl.get_items_by_index_list(args.items)
@@ -299,6 +339,8 @@ def cmd_prio(tl, args):
                 
 def cmd_stats(tl, args):
     """displays some simple statistics about your todo list
+    
+    Required fields of :param:`args`:
     """
     # write # open / # done / # prioritized / # overdue items
     counter = collections.defaultdict(int)
@@ -328,6 +370,9 @@ def cmd_stats(tl, args):
 
 def cmd_open(tl, args):
     """opens either an URL, a file or mail program depending on information that is attached to the todo item
+    
+    Required fields of :param:`args`:
+    * item: the index number of the item that has either an URL or file attached
     """
     with ColorRenderer(args) as cr:
         item = tl.get_item_by_index(args.item)
@@ -367,6 +412,10 @@ def cmd_open(tl, args):
 
 def cmd_project(tl, args):
     """lists all todo items per project
+    
+    Required fields of :param:`args`:
+    * name: the name of the project to display
+    * all: if given, also the done todo items are displayed
     """
     # lists todo items per project (like list, only with internal grouping)
     with ColorRenderer(args) as cr:
@@ -388,6 +437,10 @@ def cmd_project(tl, args):
 
 def cmd_context(tl, args):
     """lists all todo items per context
+    
+    Required fields of :param:`args`:
+    * name: the name of the context to display
+    * all: if given, also the done todo items are displayed
     """
     # lists todo items per context (like list, only with internal grouping)
     with ColorRenderer(args) as cr:
@@ -409,6 +462,8 @@ def cmd_context(tl, args):
 
 def cmd_backup(tl, args):
     """backups the current todo file to a timestamped file
+    
+    Required fields of :param:`args`:
     """
     template = os.path.basename(args.todo_file)
     filename = datetime.datetime.now().strftime("%Y-%m-%d_%H%M_" + template)
@@ -443,6 +498,8 @@ def cmd_archive(tl, args):
     
     moves all done / report items to other files (schema is specified in
     configuration) and removes them from the todo file.
+    
+    Required fields of :param:`args`:
     """
     with ColorRenderer(args) as cr:
         # base directory of todo file
@@ -488,6 +545,11 @@ def cmd_archive(tl, args):
 
 def cmd_delay(tl, args):
     """delays the due date of one or more todo items
+    
+    Required fields of :param:`args`:
+    * item: the index number of the item to delay
+    * date: either a date or a string like 'tomorrow', default '1d' (delays for 1 day)
+    * force: if given, confirmation is not requested
     """
     with ColorRenderer(args) as cr:
         item = tl.get_item_by_index(args.item)
@@ -519,6 +581,8 @@ def cmd_delay(tl, args):
 
 def cmd_clean(tl, args):
     """removes all outdated todo items from the todo list
+    
+    Required fields of :param:`args`:
     """
     # TODO: removes all outdated files from todo.txt - needs to be confirmed
     raise NotImplementedError()
@@ -526,6 +590,10 @@ def cmd_clean(tl, args):
 
 def cmd_search(tl, args):
     """lists all current and archived todo items that contain the search string
+    
+    Required fields of :param:`args`:
+    * search_string: a search string
+    * regex: if given, the search string is interpreted as a regular expression
     """
     with ColorRenderer(args) as cr:
         if args.regex:
@@ -571,6 +639,10 @@ def cmd_search(tl, args):
         
 def cmd_attach(tl, args):
     """attaches a file to the given todo item
+    
+    Required fields of :param:`args`:
+    * item: the index number of the item to which something should be attached
+    * location: either a (relative) file name or a (fully qualified) URL
     """
     with ColorRenderer(args) as cr:
         item = tl.get_item_by_index(args.item)
@@ -582,7 +654,8 @@ def cmd_attach(tl, args):
             tl.dirty = True
             tl.reindex() 
         else:
-            path = os.path.abspath(args.location)
+            # get path relative to todo file
+            path = os.path.relpath(args.location, os.path.dirname(args.todo_filename))
             if not os.path.exists(path):
                 print("File path '%s' does not exist" % path)
                 quit(-1)
@@ -600,6 +673,9 @@ def cmd_attach(tl, args):
 
 def cmd_detach(tl, args):
     """detaches a file from a given todo item
+    
+    Required fields of :param:`args`:
+    * item: the index number of the item from which something should be detached
     """
     with ColorRenderer(args) as cr:
         item = tl.get_item_by_index(args.item)
@@ -636,6 +712,8 @@ def cmd_detach(tl, args):
 
 def cmd_check(tl, args):
     """checks the todo list for syntactical validity
+    
+    Required fields of :param:`args`:
     """
     with ColorRenderer(args) as cr:
         nr = 0
