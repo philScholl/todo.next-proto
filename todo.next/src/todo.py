@@ -163,6 +163,8 @@ if __name__ == '__main__':
     parse_backup = subparser.add_parser("backup", help=actions.get_oneliner(actions.cmd_backup))
     parse_backup.add_argument("filename", type=str, help="the name of the backup file [optional]", nargs="?")
     
+    parse_check = subparser.add_parser("check", help=actions.get_oneliner(actions.cmd_check))
+    
     #parse_clean = subparser.add_parser("clean", help=actions.get_oneliner(actions.cmd_clean))
     
     parse_config = subparser.add_parser("config", help=actions.get_oneliner(actions.cmd_config))

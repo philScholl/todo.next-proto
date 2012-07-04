@@ -70,6 +70,7 @@ def cmd_add(tl, args):
             # single string 
             item = tl.add_item(args.text)
         print("Added", cr.render(item))
+        item.check()
 
 
 def cmd_remove(tl, args):
@@ -92,6 +93,7 @@ def cmd_remove(tl, args):
             for item in item_list:
                 tl.remove_item(item)
         print("%d todo items have been removed." % len(item_list))
+
 
 def cmd_done(tl, args):
     """sets the status of one or more todo items to 'done'
@@ -130,6 +132,7 @@ def cmd_edit(tl, args):
             edited_item = TodoItem(output.replace("\r\n", " ").replace("\n", " ").strip())
             tl.replace_item(item, edited_item)
             print(cr.render(edited_item))
+            edited_item.check()
         except KeyboardInterrupt:
             # editing has been aborted
             pass
@@ -520,6 +523,7 @@ def cmd_clean(tl, args):
     # TODO: removes all outdated files from todo.txt - needs to be confirmed
     raise NotImplementedError()
 
+
 def cmd_search(tl, args):
     """lists all current and archived todo items that contain the search string
     """
@@ -622,12 +626,22 @@ def cmd_detach(tl, args):
             except:
                 print("Not a valid input")
                 quit(0)
-        print(list(attmnt))
-        print(item.text)
         if attmnt[0] == "file":
-            item = tl.replace_or_add_prop(item, "file", "xxx")
+            item = tl.replace_or_add_prop(item, "file", None)
         else:
-            item.text = item.text.replace(attmnt[1], "")
+            item.text = " ".join(item.text.replace(attmnt[1], "").split())
         print(" ", cr.render(item))
-        print(item.text)
         tl.dirty = True
+
+
+def cmd_check(tl, args):
+    """checks the todo list for syntactical validity
+    """
+    with ColorRenderer(args) as cr:
+        nr = 0
+        for item, warnings in tl.check_items():
+            nr += 1
+            print(cr.render(item))
+            for warning in warnings:
+                print(" ", warning)
+        print("%s warning(s) have been found" % (nr or "No"))

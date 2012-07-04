@@ -105,17 +105,31 @@ class TodoList(object):
         # append the item to the todo list
         item = self._append(item_str)
         # add done and created properties
-        now_str = from_date(datetime.datetime.now())
+        now = datetime.datetime.now()
+        now_str = from_date(now)
         if item.is_report:
             # in case of report item, we need to store the "done" date for later sorting
-            item.replace_or_add_prop("done", now_str)
+            item.replace_or_add_prop("done", now_str, now)
         else:
-            item.replace_or_add_prop("created", now_str)
+            item.replace_or_add_prop("created", now_str, now)
         # the new item is sorted into the list
         self.reindex()
         # something has changed
         self.dirty = True
         return item
+    
+
+    def check_items(self):
+        """checks all items for potential syntax problems, e.g. non-existing files 
+        and unparsable dates
+        
+        :return: generator, yield tuple ``(item, warnings)``
+        :rtype: yields (item, list(str))
+        """
+        for item in self.list_items():
+            warnings = item.check(False)
+            if warnings:
+                yield (item, warnings)
     
 
     def replace_or_add_prop(self, item, prop_name, new_prop_val, real_prop_val = None):
