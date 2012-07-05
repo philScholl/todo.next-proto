@@ -9,7 +9,7 @@ from __future__ import print_function
 import actions
 from borg import ConfigBorg
 from todolist import TodoList
-from cli_helpers import get_doc_help, get_doc_param, get_doc_description
+from cli_helpers import get_doc_help, get_doc_param, get_doc_description, get_colors
 import argparse, os, codecs, sys
 import ConfigParser
 
@@ -78,7 +78,19 @@ if __name__ == '__main__':
     cconf.backup_dir = config.get("archive", "backup_dir")
     cconf.archive_unsorted_filename = config.get("archive", "archive_unsorted_filename")
     cconf.archive_filename_scheme = config.get("archive", "archive_filename_scheme")
-            
+    
+    cconf.col_default = get_colors(config.get("display", "col_default"))
+    cconf.col_context = get_colors(config.get("display", "col_context"))
+    cconf.col_project = get_colors(config.get("display", "col_project"))
+    cconf.col_delegate = get_colors(config.get("display", "col_delegate"))
+    cconf.col_id = get_colors(config.get("display", "col_id"))
+    
+    cconf.col_item_prio = get_colors(config.get("display", "col_item_prio"))
+    cconf.col_item_overdue = get_colors(config.get("display", "col_item_overdue"))
+    cconf.col_item_today = get_colors(config.get("display", "col_item_today"))
+    cconf.col_item_report = get_colors(config.get("display", "col_item_report"))
+    cconf.col_item_done = get_colors(config.get("display", "col_item_done"))
+    
     parser = argparse.ArgumentParser(
         description="Todo.txt file CLI interface", 
         epilog="For more, see https://github.com/philScholl/todo.next-proto",

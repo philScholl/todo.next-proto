@@ -13,7 +13,7 @@ from __future__ import print_function
 from date_trans import shorten_date
 from borg import ConfigBorg
 
-from colorama import init, deinit, Fore, Back, Style #@UnresolvedImport
+from colorama import init, deinit, Fore, Back, Style
 import re, tempfile, subprocess, os, codecs, time, sys, urlparse
 
 # regex for finding parameters in docstring
@@ -27,6 +27,18 @@ re_replace_due = re.compile(r"\b(due:[^\s]+?)(?=$|\s)", re.UNICODE)
 re_replace_tid = re.compile(r"\b(id:[^\s]+?)(?=$|\s)", re.UNICODE)
 
 RESETMARKER = "#resetmarker"
+
+def get_colors(col_string):
+    parts = col_string.upper().split()
+    f, b, s = Fore.WHITE, Back.BLACK, Style.NORMAL # @UndefinedVariable
+    try:
+        f = f if parts[0] == "-" else getattr(Fore, parts[0])
+        b = b if parts[1] == "-" else getattr(Back, parts[1])
+        s = s if parts[2] == "-" else getattr(Style, parts[2])
+    except:
+        pass 
+            
+    return "".join((f, b, s))
 
 def get_doc_description(func):
     """returns the first line and the lines prepended with ``:description:`` followed by an empty line
@@ -172,32 +184,32 @@ class ColorRenderer(object):
         return False
     
     def wrap_context(self, context):
-        return Back.RED + context + RESETMARKER #@UndefinedVariable
+        return self.conf.col_context + context + RESETMARKER 
     
     def wrap_project(self, project):
-        return Back.MAGENTA + project + RESETMARKER #@UndefinedVariable
+        return self.conf.col_project + project + RESETMARKER 
     
     def wrap_delegate(self, delegate):
-        return Back.YELLOW + Style.BRIGHT + delegate + RESETMARKER #@UndefinedVariable
+        return self.conf.col_delegate + delegate + RESETMARKER 
     
     def wrap_id(self, tid):
-        return Fore.WHITE + Style.DIM + Back.BLUE + tid + RESETMARKER #@UndefinedVariable
+        return self.conf.col_id + tid + RESETMARKER 
     
     def wrap_prioritized(self, line):
-        line = line.replace(RESETMARKER, Back.BLACK + Fore.WHITE + Style.BRIGHT) #@UndefinedVariable
-        return Fore.WHITE + Style.BRIGHT + line + Style.RESET_ALL #@UndefinedVariable
+        line = line.replace(RESETMARKER, self.conf.col_item_prio)
+        return self.conf.col_item_prio + line + self.conf.col_default
     def wrap_overdue(self, line):
-        line = line.replace(RESETMARKER, Back.BLACK + Fore.RED + Style.BRIGHT) #@UndefinedVariable
-        return Fore.RED + Style.BRIGHT + line + Style.RESET_ALL #@UndefinedVariable
+        line = line.replace(RESETMARKER, self.conf.col_item_overdue)
+        return self.conf.col_item_overdue + line + self.conf.col_default
     def wrap_today(self, line):
-        line = line.replace(RESETMARKER, Back.BLACK + Fore.YELLOW + Style.BRIGHT) #@UndefinedVariable
-        return Fore.YELLOW + Style.BRIGHT + line + Style.RESET_ALL #@UndefinedVariable
+        line = line.replace(RESETMARKER, self.conf.col_item_today)
+        return self.conf.col_item_today + line + self.conf.col_default
     def wrap_report(self, line):
-        line = line.replace(RESETMARKER, Back.BLACK + Fore.CYAN + Style.DIM) #@UndefinedVariable
-        return Fore.CYAN + Style.DIM + line + Style.RESET_ALL  #@UndefinedVariable
+        line = line.replace(RESETMARKER, self.conf.col_item_report)
+        return self.conf.col_item_report + line + self.conf.col_default
     def wrap_done(self, line):
-        line = line.replace(RESETMARKER, Back.BLACK + Fore.GREEN + Style.NORMAL) #@UndefinedVariable
-        return Fore.GREEN + Style.NORMAL + line + Style.RESET_ALL #@UndefinedVariable
+        line = line.replace(RESETMARKER, self.conf.col_item_done)
+        return self.conf.col_item_done + line + self.conf.col_default
     
     def clean_string(self, item):
         text = item.text
@@ -259,4 +271,4 @@ class ColorRenderer(object):
             return self.wrap_today(listitem)
         if item.priority:
             return self.wrap_prioritized(listitem)
-        return listitem.replace(RESETMARKER, Back.BLACK + Style.NORMAL + Fore.WHITE) #@UndefinedVariable
+        return listitem.replace(RESETMARKER, self.conf.col_default)

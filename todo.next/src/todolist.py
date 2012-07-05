@@ -291,7 +291,12 @@ class TodoList(object):
         :returns: the requested todo items (if existing)
         :rtype: list(:class:`TodoItem`) 
         """
-        return [self.get_item_by_index(item_nr) for item_nr in item_nrs if item_nr]
+        ret = []
+        for item_nr in item_nrs:
+            item = self.get_item_by_index(item_nr)
+            if item:
+                ret.append(item) 
+        return ret
     
     
     def remove_item(self, item):

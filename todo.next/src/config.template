@@ -29,7 +29,7 @@ suppress = created id
 # for parts of an item
 col_context = - RED -
 col_project = - MAGENTA -
-col_delegate = - YELLOW BRIGHT
+col_delegate = BLACK YELLOW BRIGHT
 col_id = WHITE BLUE DIM
 # for whole items
 col_item_prio = WHITE BLACK BRIGHT
@@ -37,6 +37,8 @@ col_item_overdue = RED BLACK BRIGHT
 col_item_today = YELLOW BLACK BRIGHT
 col_item_report = CYAN BLACK DIM
 col_item_done = GREEN BLACK NORMAL
+# default color
+col_default = WHITE BLACK NORMAL
 
 [extensions]
 # id support - each todo item is assigned a unique id
