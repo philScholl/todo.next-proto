@@ -261,17 +261,25 @@ class TodoList(object):
         """returns the ``n-th`` todo item from the todo list
         
         :param item_nr: the index of the requested item
-        :type item_nr: int
+        :type item_nr: str
         :returns: the requested todo item (if existing)
         :rtype: :class:`TodoItem` 
         """
         # if list is unsorted, do that first
         if not self.sorted:
             self.sort_list()
-        # simply look up the index
-        item = self.todolist[item_nr]
-        # assign the index temporarily
-        item.nr = int(item_nr)
+        try:
+            if self.conf.id_support and item_nr in self.tids:
+                item = self.tids[item_nr]
+                item.nr = self.todolist.index(item)
+            else:
+                item_nr = int(item_nr)
+                # simply look up the index
+                item = self.todolist[item_nr]
+                # assign the index temporarily
+                item.nr = item_nr
+        except:
+            return None
         return item
     
     
@@ -279,11 +287,11 @@ class TodoList(object):
         """returns a list of todo items from the todo list by indices
         
         :param item_nrs: an iterable of the indices of the requested items
-        :type item_nr: list(int)
+        :type item_nr: list(str)
         :returns: the requested todo items (if existing)
         :rtype: list(:class:`TodoItem`) 
         """
-        return [self.get_item_by_index(item_nr) for item_nr in item_nrs]
+        return [self.get_item_by_index(item_nr) for item_nr in item_nrs if item_nr]
     
     
     def remove_item(self, item):

@@ -243,12 +243,11 @@ class ColorRenderer(object):
             prefix = "[   ] "
         else:
             prefix = "[% 3d] " % item.nr
-        
+        # if ids are supported and an tid exists, we replace prefix with that
         if self.conf.id_support and item.tid:
-            tid = self.wrap_id(item.tid) + " "
-        else:
-            tid = ""
-        listitem = "%s%s%s" % (prefix, tid, text)
+            prefix = "[" + self.wrap_id(item.tid) + "] "
+            
+        listitem = "%s%s" % (prefix, text)
 
         if item.is_report:
             return self.wrap_report(listitem)

@@ -68,7 +68,17 @@ if __name__ == '__main__':
     else:
         todo_filename = create_config_wizard()
         quit(0)
-        
+
+    cconf = ConfigBorg()
+    cconf.id_support = config.getboolean("extensions", "id_support")
+    cconf.config_file = config_file
+    cconf.todo_file = todo_filename
+    cconf.shorten = config.get("display", "shorten").lower().split()
+    cconf.suppress = config.get("display", "suppress").lower().split()
+    cconf.backup_dir = config.get("archive", "backup_dir")
+    cconf.archive_unsorted_filename = config.get("archive", "archive_unsorted_filename")
+    cconf.archive_filename_scheme = config.get("archive", "archive_filename_scheme")
+            
     parser = argparse.ArgumentParser(
         description="Todo.txt file CLI interface", 
         epilog="For more, see https://github.com/philScholl/todo.next-proto",
@@ -85,11 +95,11 @@ if __name__ == '__main__':
     parse_add.add_argument("text", type=to_unicode, nargs="*", help=get_doc_param(actions.cmd_add, "text"))
     
     parse_attach = subparser.add_parser("attach", help=get_doc_help(actions.cmd_attach), description=get_doc_description(actions.cmd_attach))
-    parse_attach.add_argument("item", type=int, help=get_doc_param(actions.cmd_attach, "item"))
+    parse_attach.add_argument("item", type=str, help=get_doc_param(actions.cmd_attach, "item"))
     parse_attach.add_argument("location", type=str, help=get_doc_param(actions.cmd_attach, "location"))
     
     parse_delay = subparser.add_parser("delay", help=get_doc_help(actions.cmd_delay), description=get_doc_description(actions.cmd_delay))
-    parse_delay.add_argument("item", type=int, nargs="?", help=get_doc_param(actions.cmd_delay, "item"))
+    parse_delay.add_argument("item", type=str, nargs="?", help=get_doc_param(actions.cmd_delay, "item"))
     parse_delay.add_argument("date", type=str, nargs="?", help=get_doc_param(actions.cmd_delay, "date"))
     parse_delay.add_argument("--force", action="store_true", help=get_doc_param(actions.cmd_delay, "force"))
     
@@ -98,13 +108,13 @@ if __name__ == '__main__':
     parse_delegated.add_argument("--all", action="store_true", help=get_doc_param(actions.cmd_delegated, "all"))
     
     parse_detach = subparser.add_parser("detach", help=get_doc_help(actions.cmd_detach), description=get_doc_description(actions.cmd_detach))
-    parse_detach.add_argument("item", type=int, help=get_doc_param(actions.cmd_detach, "item"))
+    parse_detach.add_argument("item", type=str, help=get_doc_param(actions.cmd_detach, "item"))
 
     parse_done = subparser.add_parser("done", help=get_doc_help(actions.cmd_done), description=get_doc_description(actions.cmd_done))
-    parse_done.add_argument("items", type=int, nargs="+", help=get_doc_param(actions.cmd_done, "items"))
+    parse_done.add_argument("items", type=str, nargs="+", help=get_doc_param(actions.cmd_done, "items"))
 
     parse_edit = subparser.add_parser("edit", help=get_doc_help(actions.cmd_edit), description=get_doc_description(actions.cmd_edit))
-    parse_edit.add_argument("item", type=int, nargs="?", help=get_doc_param(actions.cmd_edit, "item"))
+    parse_edit.add_argument("item", type=str, nargs="?", help=get_doc_param(actions.cmd_edit, "item"))
 
     parse_list = subparser.add_parser("list", help=get_doc_help(actions.cmd_list), description=get_doc_description(actions.cmd_list)) #, aliases=["ls"]
     parse_list.add_argument("search_string", type=to_unicode, nargs="?", help=get_doc_param(actions.cmd_list, "search_string"))
@@ -112,18 +122,18 @@ if __name__ == '__main__':
     parse_list.add_argument("--regex", action="store_true", help=get_doc_param(actions.cmd_list, "regex"))
 
     parse_open = subparser.add_parser("open", help=get_doc_help(actions.cmd_open), description=get_doc_description(actions.cmd_open))
-    parse_open.add_argument("item", type=int, help=get_doc_param(actions.cmd_open, "item"))
+    parse_open.add_argument("item", type=str, help=get_doc_param(actions.cmd_open, "item"))
     
     parse_prio = subparser.add_parser("prio", help=get_doc_help(actions.cmd_prio), description=get_doc_description(actions.cmd_prio))
-    parse_prio.add_argument("items", type=int, nargs="+", help=get_doc_param(actions.cmd_prio, "items"))
+    parse_prio.add_argument("items", type=str, nargs="+", help=get_doc_param(actions.cmd_prio, "items"))
     parse_prio.add_argument("priority", type=str, help=get_doc_param(actions.cmd_prio, "priority"))
     
     parse_del = subparser.add_parser("remove", help=get_doc_help(actions.cmd_remove), description=get_doc_description(actions.cmd_remove))
-    parse_del.add_argument("items", type=int, nargs="+", help=get_doc_param(actions.cmd_remove, "items"))
+    parse_del.add_argument("items", type=str, nargs="+", help=get_doc_param(actions.cmd_remove, "items"))
     parse_del.add_argument("--force", action="store_true", help=get_doc_param(actions.cmd_remove, "force"))
 
     parse_reopen = subparser.add_parser("reopen", help=get_doc_help(actions.cmd_reopen), description=get_doc_description(actions.cmd_reopen))
-    parse_reopen.add_argument("items", type=int, nargs="+", help=get_doc_param(actions.cmd_reopen, "items"))
+    parse_reopen.add_argument("items", type=str, nargs="+", help=get_doc_param(actions.cmd_reopen, "items"))
 
     parse_tasked = subparser.add_parser("tasked", help=get_doc_help(actions.cmd_tasked), description=get_doc_description(actions.cmd_tasked))
     parse_tasked.add_argument("initiator", type=to_unicode, nargs="?", help=get_doc_param(actions.cmd_tasked, "initiator"))
@@ -178,16 +188,6 @@ if __name__ == '__main__':
 #    args.config = config
 #    args.config_file = config_file
 #    args.todo_file = todo_filename
-    
-    cconf = ConfigBorg()
-    cconf.id_support = config.getboolean("extensions", "id_support")
-    cconf.config_file = config_file
-    cconf.todo_file = todo_filename
-    cconf.shorten = config.get("display", "shorten").lower().split()
-    cconf.suppress = config.get("display", "suppress").lower().split()
-    cconf.backup_dir = config.get("archive", "backup_dir")
-    cconf.archive_unsorted_filename = config.get("archive", "archive_unsorted_filename")
-    cconf.archive_filename_scheme = config.get("archive", "archive_filename_scheme")
     
     with TodoList(todo_filename) as tl:
         try:

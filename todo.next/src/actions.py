@@ -65,7 +65,6 @@ def cmd_add(tl, args):
             # no arguments given, open editor and let user enter data there
             output = get_editor_input("")
             item = tl.add_item(output.replace("\r\n", " ").replace("\n", " ").strip())
-            pass
         elif isinstance(args.text, list):
             # string not enclosed in ""
             item = tl.add_item(" ".join(args.text))
@@ -85,6 +84,9 @@ def cmd_remove(tl, args):
     """
     with ColorRenderer() as cr:
         item_list = tl.get_items_by_index_list(args.items)
+        if not item_list:
+            print("Could not find item(s) %s" % ", ".join(args.items))
+            return
         if not args.force:
             print("Do you really want to remove the following item(s):")
             for item in item_list:
@@ -145,6 +147,10 @@ def cmd_edit(tl, args):
             open_editor(conf.todo_file)
             quit(0)
         item = tl.get_item_by_index(args.item)
+        if not item:
+            print("Could not find item '%s'" % args.item)
+            return
+        
         print(cr.render(item))
         try:
             output = get_editor_input(item.text)
@@ -305,6 +311,9 @@ def cmd_prio(tl, args):
     """
     with ColorRenderer() as cr:
         prio_items = tl.get_items_by_index_list(args.items)
+        if not prio_items:
+            print("Could not find items %s" % ", ".join(args.items))
+            return
         new_prio = args.priority
         if not re_prio.match(new_prio):
             print("Priority '%s' can't be recognized (must be one of A to Z or +/-)" % new_prio)
@@ -379,6 +388,10 @@ def cmd_open(tl, args):
     """
     with ColorRenderer() as cr:
         item = tl.get_item_by_index(args.item)
+        if not item:
+            print("Could not find item '%s'" % args.item)
+            return
+
         nr = 0
         actions = {}
         for toopen in item.urls:
@@ -558,6 +571,9 @@ def cmd_delay(tl, args):
     """
     with ColorRenderer() as cr:
         item = tl.get_item_by_index(args.item)
+        if not item:
+            print("Could not find item '%s'" % args.item)
+            return
         if item.due_date:
             new_date = to_date(args.date, item.due_date)
             if isinstance(new_date, basestring):
@@ -653,6 +669,10 @@ def cmd_attach(tl, args):
     with ColorRenderer() as cr:
         conf = ConfigBorg()
         item = tl.get_item_by_index(args.item)
+        if not item:
+            print("Could not find item '%s'" % args.item)
+            return
+
         if re_urls.match(args.location):
             # we got an URL
             print("Attaching URL", args.location)
@@ -691,6 +711,9 @@ def cmd_detach(tl, args):
     """
     with ColorRenderer() as cr:
         item = tl.get_item_by_index(args.item)
+        if not item:
+            print("Could not find item '%s'" % args.item)
+            return
         attmnt_list = []
         attmnt_list.extend(("url", url) for url in item.urls)
         if item.properties.get("file", None):
