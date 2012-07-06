@@ -20,8 +20,8 @@ except ImportError:
 
 # partial date without year (German form, e.g. '21.12.')
 re_partial_date = re.compile("(\d{1,2})\.(\d{1,2})\.", re.UNICODE)
-# relative form of date, e.g. '+1w2d' (plus 1 week, 2 days). Month support needs :mod:`dateutil
-re_rel_date = re.compile("^([+-]?)(\d{1,2}y)?(\d{1,2}m)?(\d{1,2}w)?(\d{1,3}d)?(\d{1,3}h)?$", re.IGNORECASE)
+# relative form of date, e.g. 'm1w2d' (minus 1 week, 2 days). Month support needs :mod:`dateutil
+re_rel_date = re.compile("^([+-pm]?)(\d{1,2}y)?(\d{1,2}m)?(\d{1,2}w)?(\d{1,3}d)?(\d{1,3}h)?$", re.IGNORECASE)
 
 
 def add_year(date, nr_of_years):
@@ -45,7 +45,7 @@ def add_year(date, nr_of_years):
 def get_relative_date(rel_string, reference_date = None):
     """returns a date that is calculated relatively to a reference date
     
-    :param rel_string: a string like e.g. ``-1y2w3h`` meaning 1 year, 2 weeks and 3 hours ago
+    :param rel_string: a string like e.g. ``m1y2w3h`` meaning 1 year, 2 weeks and 3 hours ago ("minus")
     :type rel_string: str
     :param reference_date: the reference date, if not given, the current point of time is used
     :type reference_date: :class:`datetime.datetime`
@@ -78,7 +78,7 @@ def get_relative_date(rel_string, reference_date = None):
         if dyears:
             # add years
             rel = add_year(rel, dyears) 
-    if sign == "-":
+    if sign in ("-", "m"):
         return reference_date - rel
     else:
         return reference_date + rel
@@ -149,6 +149,10 @@ def get_date_by_weekday(weekday_name, reference_date = None):
 def to_date(date_string, reference_date = None):
     """ parses a :class:`datetime` object from a given string
     
+    :param:`reference_date` may be one of the following:
+        * an absolute value like ``today``, ``tomorrow`` or ``2012-07-06``
+        * a relative day (``wednesday``, ``+1d``)
+    
     :param date_string: a given string representing a (relative) date
     :type date_string: :class:`str`
     :param reference_date: a given date that serves as the reference point for relative date calculations. If ``None``, today's date 00:00am is used.
@@ -166,11 +170,14 @@ def to_date(date_string, reference_date = None):
     date_string = date_string.strip().lower()
     # first handle special cases:
     if date_string in ["today", "td", ""]:
-        # today
-        return reference_date
+        # absolute: today (only change day, not time)
+        return now.replace(hour=reference_date.hour, minute=reference_date.minute)
+    elif date_string in ["yesterday", "yday", "yd"]:
+        # absolute: yesterday (only change day, not time)
+        return (now + datetime.timedelta(days=-1)).replace(hour=reference_date.hour, minute=reference_date.minute)
     elif date_string in ["tomorrow", "tm"]:
-        # tomorrow
-        return reference_date + datetime.timedelta(days=1)
+        # absolute: tomorrow (only change day, not time)
+        return (now + datetime.timedelta(days=1)).replace(hour=reference_date.hour, minute=reference_date.minute)
     elif date_string in weekdays:
         # a weekday was given
         return get_date_by_weekday(date_string, reference_date)

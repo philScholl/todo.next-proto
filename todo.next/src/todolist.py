@@ -7,7 +7,7 @@ from __future__ import print_function
 from date_trans import from_date
 from todoitem import TodoItem
 
-import datetime, codecs, hashlib, random
+import datetime, codecs, hashlib, random, math
 from itertools import groupby
 from borg import ConfigBorg
 
@@ -112,7 +112,7 @@ class TodoList(object):
         return item
 
     
-    def create_tid(self, item):
+    def create_tid(self, item, maxlen = MAXLEN):
         """creates a random 4-letter tid
         
         :param item: a todo item
@@ -120,25 +120,41 @@ class TodoList(object):
         :return: a 4-letter tid
         :rtype: str 
         """
-        # for generating different tids for same text
-        salt = random.choice(ALPHABET)
-        # get hash
-        md5 = hashlib.new("md5", salt + item.text)
-        # get base-26 MAXLEN-digit nr
-        nr = int(md5.hexdigest()[:8], 16) % (26 ** MAXLEN)
-        
-        # get base-26 representation of nr
-        s = []
-        t = MAXLEN - 1
-        while t >= 0:
-            bcp = int(pow(BASE, t))
-            a = int(nr / bcp) % BASE
-            s.append(ALPHABET[a:a+1])
-            nr = nr - (a * bcp)
-            t -= 1
-        
-        return "".join(s)
-
+        # set first value
+        text = item.text
+        counter = 0
+        # try at most 60 times
+        while counter < 60:
+            # for generating different tids for same text
+            salt = random.choice(ALPHABET)
+            text = salt + text
+            # get hash
+            md5 = hashlib.new("md5", text)
+            # maximal number that needs to be reachable for maxlen characters
+            max_nr = len(ALPHABET) ** maxlen
+            # maximal size of the the hex string to be able to represent this number
+            len_hex_str = int(math.ceil(math.log(max_nr, 16)))
+            # get base-26 MAXLEN-digit nr
+            nr = int(md5.hexdigest()[:len_hex_str], 16) % max_nr
+            
+            # get base-26 representation of nr
+            char_list = []
+            t = maxlen - 1
+            # transform nr in base of alphabet
+            while t >= 0:
+                bcp = int(pow(BASE, t))
+                a = int(nr / bcp) % BASE
+                char_list.append(ALPHABET[a:a+1])
+                nr = nr - (a * bcp)
+                t -= 1
+            
+            tid = "".join(char_list)
+            if tid not in self.tids:
+                print(counter)
+                return tid
+            counter += 1
+        # we tried often enough and failed :(
+        return "xxx"
 
     def add_item(self, item_str):
         """exposed add item method, adds a new todo item to the todo file and reindexes

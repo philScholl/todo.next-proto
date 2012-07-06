@@ -169,7 +169,8 @@ if __name__ == '__main__':
     parse_project.add_argument("--all", action="store_true", help=get_doc_param(actions.cmd_project, "all"))
 
     parse_report = subparser.add_parser("report", help=get_doc_help(actions.cmd_report), description=get_doc_description(actions.cmd_report))
-    parse_report.add_argument("date", type=str, nargs="?", help=get_doc_param(actions.cmd_report, "date"))
+    parse_report.add_argument("from_date", type=str, nargs="?", help=get_doc_param(actions.cmd_report, "from_date"))
+    parse_report.add_argument("to_date", type=str, nargs="?", help=get_doc_param(actions.cmd_report, "to_date"))
     
     parse_search = subparser.add_parser("search", help=get_doc_help(actions.cmd_search), description=get_doc_description(actions.cmd_search))
     parse_search.add_argument("search_string", type=to_unicode, help=get_doc_param(actions.cmd_search, "search_string"))

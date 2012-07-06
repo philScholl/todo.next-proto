@@ -227,29 +227,97 @@ def cmd_overdue(tl, args):
 def cmd_report(tl, args):
     """shows a daily report of all done and report items
     
+    :description: This command lists all done and report items for a given date
+        or date range. If no arguments are given, all available todo items are
+        displayed. 
+    
     Required fields of :param:`args`:
-    * date: either a date or a string like 'tomorrow' or '*', default 'today'
+    * from_date: either a date or a string like 'tomorrow' or '*'
+    * to_date: either a date or a string like 'tomorrow' or '*'
     """
     with ColorRenderer() as cr:
-        if args.date:
-            args.date = to_date(args.date)
-        # get list of done and report items
-        report_list = list(tl.list_items(lambda x: x.done or x.is_report))
+        # get configuration
+        conf = ConfigBorg()
         # default date used when no done date is specified
         na_date = datetime.datetime(1970, 1, 1)
+        # check from and to date, make them datetime or None
+        for nr, tdate in enumerate([args.from_date, args.to_date]):
+            pdate = to_date(tdate)
+            if isinstance(pdate, basestring):
+                pdate = None
+            if nr == 0:
+                args.from_date = pdate
+            elif nr == 1:
+                args.to_date = pdate
+        
+        # what mode are we in?
+        mode = None
+        if args.from_date and args.to_date:
+            mode = "RANGE"
+        elif args.from_date and not args.to_date:
+            mode = "DAY"
+        else:
+            mode, args.from_date, args.to_date = "ALL", na_date, datetime.datetime.now()
+
+        # swap dates, if necessary
+        if args.from_date > args.to_date:
+            args.from_date, args.to_date = args.to_date, args.from_date
+        # set end date to end of day
+        args.to_date = args.to_date.replace(hour=23, minute=59, second=59)
+        
+        #TODO: for logging print(mode, args.from_date, args.to_date)
+        
+        # get list of done and report items from current todo list
+        report_list = list(tl.list_items(lambda x: (x.done or x.is_report)))
+        
+        # get all archive file names in list
+        file_pattern = re_replace_archive_vars.sub("*", conf.archive_filename_scheme)
+        root_dir = os.path.dirname(conf.todo_file)
+        file_list = glob.glob(os.path.join(root_dir, file_pattern))
+        # regex for finding all replaced parts in archive filename scheme
+        re_find_date_str = re_replace_archive_vars.sub("(.+)", conf.archive_filename_scheme).replace("\\", "\\\\")
+        re_find_date = re.compile(re_find_date_str, re.UNICODE)
+        # loop through all files and see, whether they match the given date range
+        for fn in file_list:
+            # get all replaced values in filename
+            parts = re_find_date.findall(fn)[0]
+            # get the variables responsible for this substitution (e.archived_items. "%Y", "%m", ...)
+            tvars = re_replace_archive_vars.findall(conf.archive_filename_scheme)
+            # create mapping, removing duplicates
+            mapping = dict(zip(tvars, parts))
+            # create date from mapping
+            tdate = datetime.datetime.strptime(" ".join(mapping.values()), " ".join(mapping))
+            
+            # if filename matches date range
+            if args.from_date <= tdate <= args.to_date:
+                # load todo list
+                res = TodoList(fn)
+                # get items directly if they are done or report items
+                archived_items = [item for item in res.todolist if item.done or item.is_report]
+                for item in archived_items:
+                    # replace id with (A) to mark it as archived
+                    item.tid = "(A)"
+                # append it to candidates
+                report_list.extend(archived_items)
+        
         # sort filtered list by "done" date 
         report_list.sort(key=lambda x: x.done_date or na_date)
+        
         # group report/done items by date
         for keys, groups in groupby(report_list, 
             lambda x: ((x.done_date or na_date).year, (x.done_date or na_date).month, (x.done_date or na_date).day)
             ):
-            if args.date and keys != (args.date.year, args.date.month, args.date.day):
+            # we are looking at that date right now
+            temp_date = datetime.datetime(year=keys[0], month=keys[1], day=keys[2])
+            # that date does not match the requested date range: skip
+            if not args.from_date <= temp_date <= args.to_date:
                 continue
             # filter out default dates again
-            if (na_date.year, na_date.month, na_date.day) == keys:
-                print("No done date attached")
+            if is_same_day(na_date, temp_date):
+                print("Report for unknown date:")
             else:
-                print("Report for %d-%02d-%02d:" % keys)
+                print("Report for %s:" % temp_date.strftime("%A, %Y-%m-%d"))
+            # print the items, finally
             for item in groups:
                 print(" ", cr.render(item))
 
