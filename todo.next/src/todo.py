@@ -13,6 +13,39 @@ from cli_helpers import get_doc_help, get_doc_param, get_doc_description, get_co
 import argparse, os, codecs, sys
 import ConfigParser
 
+class AliasedSubParsersAction(argparse._SubParsersAction):
+    """subparser action allowing aliases for :mod:`argparse` in < Python 3.2
+    
+    .. see:: https://gist.github.com/471779 (credit to sampsyo)
+    
+    """
+    class _AliasedPseudoAction(argparse.Action):
+        def __init__(self, name, aliases, cmd_help):
+            dest = name
+            if aliases:
+                dest += ' (%s)' % ','.join(aliases)
+            sup = super(AliasedSubParsersAction._AliasedPseudoAction, self)
+            sup.__init__(option_strings=[], dest=dest, help=cmd_help)
+
+    def add_parser(self, name, **kwargs):
+        if 'aliases' in kwargs:
+            aliases = kwargs['aliases']
+            del kwargs['aliases']
+        else:
+            aliases = []
+
+        parser = super(AliasedSubParsersAction, self).add_parser(name, **kwargs)
+        # Make the aliases work.
+        for alias in aliases:
+            self._name_parser_map[alias] = parser
+        # Make the help text reflect them, first removing old help entry.
+        if 'help' in kwargs:
+            cmd_help = kwargs.pop('help')
+            self._choices_actions.pop()
+            pseudo_action = self._AliasedPseudoAction(name, aliases, cmd_help)
+            self._choices_actions.append(pseudo_action)
+        return parser
+
 def to_unicode(string):
     return string.decode(sys.getfilesystemencoding())
 
@@ -52,7 +85,7 @@ def create_config_wizard():
         with codecs.open(config_file, "w", "utf-8") as tofp:
             # save
             config.write(tofp)
-    print("Please have a look at your configuration file and change according to your preferences!")
+    print("Please have a look at your configuration file (\"t config\") and change according to your preferences!")
     # finish here
     return todo_filename
 
@@ -68,23 +101,29 @@ if __name__ == '__main__':
     else:
         todo_filename = create_config_wizard()
         quit(0)
-
+    
+    # get configuration values and store them in a borg
     cconf = ConfigBorg()
-    cconf.id_support = config.getboolean("extensions", "id_support")
     cconf.config_file = config_file
     cconf.todo_file = todo_filename
+    cconf.sort = config.getboolean("todo", "sort")
+    # are ids displayed / automatically generated?
+    cconf.id_support = config.getboolean("extensions", "id_support")
+    # which properties / fields are shortened
     cconf.shorten = config.get("display", "shorten").lower().split()
+    # which properties / fields are suppressed
     cconf.suppress = config.get("display", "suppress").lower().split()
+    # archiving and backup folders / filenames
     cconf.backup_dir = config.get("archive", "backup_dir")
     cconf.archive_unsorted_filename = config.get("archive", "archive_unsorted_filename")
     cconf.archive_filename_scheme = config.get("archive", "archive_filename_scheme")
-    
+    # colors for parts of an item
     cconf.col_default = get_colors(config.get("display", "col_default"))
     cconf.col_context = get_colors(config.get("display", "col_context"))
     cconf.col_project = get_colors(config.get("display", "col_project"))
     cconf.col_delegate = get_colors(config.get("display", "col_delegate"))
     cconf.col_id = get_colors(config.get("display", "col_id"))
-    
+    # colors for lines of an item
     cconf.col_item_prio = get_colors(config.get("display", "col_item_prio"))
     cconf.col_item_overdue = get_colors(config.get("display", "col_item_overdue"))
     cconf.col_item_today = get_colors(config.get("display", "col_item_today"))
@@ -95,6 +134,8 @@ if __name__ == '__main__':
         description="Todo.txt file CLI interface", 
         epilog="For more, see https://github.com/philScholl/todo.next-proto",
         )
+    parser.register('action', 'parsers', AliasedSubParsersAction)
+    
     parser.add_argument("-v", action="count", help="verbose flag")
     
     # -------------------------------------------------
@@ -125,10 +166,10 @@ if __name__ == '__main__':
     parse_done = subparser.add_parser("done", help=get_doc_help(actions.cmd_done), description=get_doc_description(actions.cmd_done))
     parse_done.add_argument("items", type=str, nargs="+", help=get_doc_param(actions.cmd_done, "items"))
 
-    parse_edit = subparser.add_parser("edit", help=get_doc_help(actions.cmd_edit), description=get_doc_description(actions.cmd_edit))
+    parse_edit = subparser.add_parser("edit", aliases=("ed",), help=get_doc_help(actions.cmd_edit), description=get_doc_description(actions.cmd_edit))
     parse_edit.add_argument("item", type=str, nargs="?", help=get_doc_param(actions.cmd_edit, "item"))
 
-    parse_list = subparser.add_parser("list", help=get_doc_help(actions.cmd_list), description=get_doc_description(actions.cmd_list)) #, aliases=["ls"]
+    parse_list = subparser.add_parser("list", aliases=("ls",), help=get_doc_help(actions.cmd_list), description=get_doc_description(actions.cmd_list))
     parse_list.add_argument("search_string", type=to_unicode, nargs="?", help=get_doc_param(actions.cmd_list, "search_string"))
     parse_list.add_argument("--all", action="store_true", help=get_doc_param(actions.cmd_list, "all"))
     parse_list.add_argument("--regex", action="store_true", help=get_doc_param(actions.cmd_list, "regex"))
@@ -140,7 +181,7 @@ if __name__ == '__main__':
     parse_prio.add_argument("items", type=str, nargs="+", help=get_doc_param(actions.cmd_prio, "items"))
     parse_prio.add_argument("priority", type=str, help=get_doc_param(actions.cmd_prio, "priority"))
     
-    parse_del = subparser.add_parser("remove", help=get_doc_help(actions.cmd_remove), description=get_doc_description(actions.cmd_remove))
+    parse_del = subparser.add_parser("remove", aliases=("rm", "del"), help=get_doc_help(actions.cmd_remove), description=get_doc_description(actions.cmd_remove))
     parse_del.add_argument("items", type=str, nargs="+", help=get_doc_param(actions.cmd_remove, "items"))
     parse_del.add_argument("--force", action="store_true", help=get_doc_param(actions.cmd_remove, "force"))
 
@@ -158,17 +199,17 @@ if __name__ == '__main__':
     parse_agenda = subparser.add_parser("agenda", help=get_doc_help(actions.cmd_agenda), description=get_doc_description(actions.cmd_agenda))
     parse_agenda.add_argument("date", type=str, nargs="?", help=get_doc_param(actions.cmd_agenda, "date"))
 
-    parse_context = subparser.add_parser("context", help=get_doc_help(actions.cmd_context), description=get_doc_description(actions.cmd_context))
+    parse_context = subparser.add_parser("context", aliases=("ctx",), help=get_doc_help(actions.cmd_context), description=get_doc_description(actions.cmd_context))
     parse_context.add_argument("name", type=str, help=get_doc_param(actions.cmd_context, "name"), nargs="?")
     parse_context.add_argument("--all", action="store_true", help=get_doc_param(actions.cmd_context, "all"))
     
     parse_overdue = subparser.add_parser("overdue", help=get_doc_help(actions.cmd_overdue), description=get_doc_description(actions.cmd_overdue))
     
-    parse_project = subparser.add_parser("project", help=get_doc_help(actions.cmd_project), description=get_doc_description(actions.cmd_project))
+    parse_project = subparser.add_parser("project", aliases=("pr",), help=get_doc_help(actions.cmd_project), description=get_doc_description(actions.cmd_project))
     parse_project.add_argument("name", type=str, nargs="?", help=get_doc_param(actions.cmd_project, "name"))
     parse_project.add_argument("--all", action="store_true", help=get_doc_param(actions.cmd_project, "all"))
 
-    parse_report = subparser.add_parser("report", help=get_doc_help(actions.cmd_report), description=get_doc_description(actions.cmd_report))
+    parse_report = subparser.add_parser("report", aliases=("rep", ), help=get_doc_help(actions.cmd_report), description=get_doc_description(actions.cmd_report))
     parse_report.add_argument("from_date", type=str, nargs="?", help=get_doc_param(actions.cmd_report, "from_date"))
     parse_report.add_argument("to_date", type=str, nargs="?", help=get_doc_param(actions.cmd_report, "to_date"))
     

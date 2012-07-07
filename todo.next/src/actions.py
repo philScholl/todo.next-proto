@@ -51,7 +51,6 @@ def cmd_list(tl, args):
             elif not args.search_string or args.search_string in item.text: 
                 print(cr.render(item))
 
-
 def cmd_add(tl, args):
     """adds a new todo item to the todo list
         
@@ -270,10 +269,17 @@ def cmd_report(tl, args):
         # get list of done and report items from current todo list
         report_list = list(tl.list_items(lambda x: (x.done or x.is_report)))
         
+        # get list of done and report items from un-dated archive file
+        root_dir = os.path.dirname(conf.todo_file)
+        unsorted_fn = os.path.join(root_dir, conf.archive_unsorted_filename)
+        if os.path.exists(unsorted_fn):
+            res = TodoList(unsorted_fn)
+            report_list.extend(res.todolist)
+        
         # get all archive file names in list
         file_pattern = re_replace_archive_vars.sub("*", conf.archive_filename_scheme)
-        root_dir = os.path.dirname(conf.todo_file)
         file_list = glob.glob(os.path.join(root_dir, file_pattern))
+
         # regex for finding all replaced parts in archive filename scheme
         re_find_date_str = re_replace_archive_vars.sub("(.+)", conf.archive_filename_scheme).replace("\\", "\\\\")
         re_find_date = re.compile(re_find_date_str, re.UNICODE)
@@ -514,7 +520,7 @@ def cmd_project(tl, args):
             # show all sorted projects
             args_list = sorted(project_dict)
         for project in args_list:
-            print("Project", cr.wrap_project(project))
+            print("Project", cr.wrap_project(project, reset=True))
             for item in sorted(project_dict[project], cmp=tl.default_sort):
                 print(" ", cr.render(item))
 
@@ -539,7 +545,7 @@ def cmd_context(tl, args):
             args_list = sorted(context_dict)
         
         for context in args_list:
-            print("Context", cr.wrap_context(context))
+            print("Context", cr.wrap_context(context, reset=True))
             for item in sorted(context_dict[context], cmp=tl.default_sort):
                 print(" ", cr.render(item))
 
@@ -678,7 +684,7 @@ def cmd_clean(tl, args):
 
 
 def cmd_search(tl, args):
-    """lists all current and archived todo items that contain the search string
+    """lists all current and archived todo items that match the search string
     
     Required fields of :param:`args`:
     * search_string: a search string
@@ -826,3 +832,11 @@ def cmd_check(tl, args):
             for warning in warnings:
                 print(" ", warning)
         print("%s warning(s) have been found" % (nr or "No"))
+        
+# Aliases
+cmd_ls = cmd_list
+cmd_ed = cmd_edit
+cmd_rm = cmd_del = cmd_remove
+cmd_ctx = cmd_context
+cmd_pr = cmd_project
+cmd_rep = cmd_report

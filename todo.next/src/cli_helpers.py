@@ -183,17 +183,17 @@ class ColorRenderer(object):
         # we don't swallow the exceptions
         return False
     
-    def wrap_context(self, context):
-        return self.conf.col_context + context + RESETMARKER 
+    def wrap_context(self, context, reset = False):
+        return self.conf.col_context + context + (RESETMARKER if not reset else self.conf.col_default) 
     
-    def wrap_project(self, project):
-        return self.conf.col_project + project + RESETMARKER 
+    def wrap_project(self, project, reset = False):
+        return self.conf.col_project + project + (RESETMARKER if not reset else self.conf.col_default)
     
-    def wrap_delegate(self, delegate):
-        return self.conf.col_delegate + delegate + RESETMARKER 
+    def wrap_delegate(self, delegate, reset = False):
+        return self.conf.col_delegate + delegate + (RESETMARKER if not reset else self.conf.col_default)
     
-    def wrap_id(self, tid):
-        return self.conf.col_id + tid + RESETMARKER 
+    def wrap_id(self, tid, reset = False):
+        return self.conf.col_id + tid + (RESETMARKER if not reset else self.conf.col_default)
     
     def wrap_prioritized(self, line):
         line = line.replace(RESETMARKER, self.conf.col_item_prio)

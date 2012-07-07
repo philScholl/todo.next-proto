@@ -1,10 +1,10 @@
 [todo]
 # the location (full path) of the todo file. Must be absolute, i.e. the full path
 todofile =
-# if True, the todo file will be sorted by todo.next, otherwise it is left like as-is
-sort = True
 # location of the editor, if not default
 editor =
+# if True, the todo file will be sorted by todo.next, otherwise it is left like as-is
+sort = True
 
 [archive]
 # archive directory and files are created based on "done"-date. 
@@ -30,7 +30,7 @@ suppress = created id
 col_context = - RED -
 col_project = - MAGENTA -
 col_delegate = BLACK YELLOW BRIGHT
-col_id = WHITE BLUE DIM
+col_id = BLUE BLACK BRIGHT
 # for whole items
 col_item_prio = WHITE BLACK BRIGHT
 col_item_overdue = RED BLACK BRIGHT

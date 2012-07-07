@@ -7,7 +7,7 @@ from __future__ import print_function
 from date_trans import from_date
 from todoitem import TodoItem
 
-import datetime, codecs, hashlib, random, math
+import datetime, codecs, hashlib, random, math, sys
 from itertools import groupby
 from borg import ConfigBorg
 
@@ -36,7 +36,7 @@ class TodoList(object):
             random.seed()
         # read todo file items
         with codecs.open(self.todofile, "r", "utf-8") as fp:
-            for line in fp:
+            for line_nr, line in enumerate(fp):
                 line = line.strip()
                 if not line:
                     continue
@@ -48,6 +48,7 @@ class TodoList(object):
                         pass
                     else:
                         self.tids[item.tid] = item
+                item.line_nr = line_nr
         # sort list
         self.sort_list()
     
@@ -89,8 +90,12 @@ class TodoList(object):
         """writes the todo items back to the file
         """
         with codecs.open(self.todofile, "w", "utf-8") as fp:
-            if not self.sorted:
+            if self.conf.sort and not self.sorted:
+                # sort list according to own rules
                 self.sort_list()
+            elif not self.conf.sort:
+                # sort list according to original order (line number in todo.txt file)
+                self.todolist.sort(key=lambda x: x.line_nr if x.line_nr != None else sys.maxint)
             for item in self.todolist:
                 fp.write("%s\n" % item.text)
     
@@ -150,7 +155,6 @@ class TodoList(object):
             
             tid = "".join(char_list)
             if tid not in self.tids:
-                print(counter)
                 return tid
             counter += 1
         # we tried often enough and failed :(
@@ -335,9 +339,12 @@ class TodoList(object):
         :param new_item: the new todo item to replace the old one
         :type new_item: :class:`TodoItem`
         """
+        # set to index and copy index number
         index = self.todolist.index(item)
         new_item.nr = index
         self.todolist[index] = new_item
+        # line number
+        new_item.line_nr = item.line_nr
         self.reindex()
         self.dirty = True
         # TODO: return something?

@@ -10,7 +10,7 @@ Provides functionality for a single todo item
 from __future__ import print_function
 import parsers
 from date_trans import from_date, to_date, is_same_day
-import datetime, re, os
+import datetime, re, os, sys
 
 class TodoItem(object):
     
@@ -26,6 +26,7 @@ class TodoItem(object):
         self.done = None
         self.is_report = None
         self.nr = None
+        self.line_nr = sys.maxint
         # find all special syntax
         self.parse()
         # fix dates on properties
