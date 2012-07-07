@@ -106,6 +106,7 @@ if __name__ == '__main__':
     cconf = ConfigBorg()
     cconf.config_file = config_file
     cconf.todo_file = todo_filename
+    cconf.editor = config.get("todo", "editor")
     cconf.sort = config.getboolean("todo", "sort")
     # are ids displayed / automatically generated?
     cconf.id_support = config.getboolean("extensions", "id_support")

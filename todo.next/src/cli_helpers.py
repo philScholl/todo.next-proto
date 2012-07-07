@@ -103,11 +103,21 @@ def open_editor(filename):
     :return: return code of the respective OS call
     :rtype: int
     """
-    if sys.platform == "win32":
-        # alternatively use os.startfile
-        return subprocess.call([filename,], shell=True)
-    elif sys.platform == "linux2":
-        editor = os.getenv("EDITOR", "emacs")
+    conf = ConfigBorg()
+    if conf.editor:
+        editor = conf.editor
+    else:
+        editor = None
+    if os.name == "nt":
+        if not editor:
+            editor = os.getenv("EDITOR", None)
+        if editor:
+            return subprocess.call([editor, filename], shell=True)
+        else:
+            return subprocess.call([filename,], shell=True)
+    elif os.name == "posix":
+        if not editor:
+            editor = os.getenv("EDITOR", "/etc/alternatives/editor")
         return os.spawnl(os.P_WAIT, editor, editor, tmpfile) #@UndefinedVariable
 
 
@@ -132,7 +142,7 @@ def get_editor_input(initial_text):
             fp.write(initial_text)
         
         # this is platform dependent
-        if sys.platform == "win32":
+        if os.name == "nt":
             # to check whether the file has changed, we get the last modified time
             created = os.path.getmtime(tmpfile)
             # call the default editor
@@ -150,8 +160,8 @@ def get_editor_input(initial_text):
                 time.sleep(WAIT_TIME)
             with codecs.open(tmpfile, "r", "utf-8") as fp:
                 result = fp.read()
-        elif sys.platform == "linux2":
-            # runs only on linux
+        elif os.name == "posix":
+            # runs only on posix
             handle = open_editor(tmpfile)
             if handle != 0:
                 # an error occurred
