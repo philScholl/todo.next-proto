@@ -113,7 +113,6 @@ def cmd_done(tl, args):
         print("Marked following todo items as 'done':")
         for item in tl.get_items_by_index_list(args.items):
             tl.set_to_done(item)
-            tl.reindex()
             print(" ", cr.render(item))
 
 
@@ -832,7 +831,24 @@ def cmd_check(tl, args):
             for warning in warnings:
                 print(" ", warning)
         print("%s warning(s) have been found" % (nr or "No"))
+
+
+def cmd_repeat(tl, args):
+    """marks the todo item as done and reenters it after the specified time
+    
+    Required fields of :param:`args`:
+    * item: the index number of the item from which something should be detached
+    * date: the relative or absolute date when the item is due again 
+    """
+    with ColorRenderer() as cr:
+        item = tl.get_item_by_index(args.item)
+        new_item = tl.add_item(item.text)
+        item.set_to_done()
+        tl.replace_or_add_prop(new_item, "due", args.date, to_date(args.date))
+        print("Marked todo item as 'done' and reinserted:")
+        print(" ", cr.render(new_item))
         
+    
 # Aliases
 cmd_ls = cmd_list
 cmd_ed = cmd_edit

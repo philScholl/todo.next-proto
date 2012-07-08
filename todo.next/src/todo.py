@@ -138,6 +138,7 @@ if __name__ == '__main__':
     parser.register('action', 'parsers', AliasedSubParsersAction)
     
     parser.add_argument("-v", action="count", help="verbose flag")
+    parser.add_argument("--nc", action="store_true")
     
     # -------------------------------------------------
     # Maintenance functionality
@@ -189,6 +190,10 @@ if __name__ == '__main__':
     parse_reopen = subparser.add_parser("reopen", help=get_doc_help(actions.cmd_reopen), description=get_doc_description(actions.cmd_reopen))
     parse_reopen.add_argument("items", type=str, nargs="+", help=get_doc_param(actions.cmd_reopen, "items"))
 
+    parse_repeat = subparser.add_parser("repeat", help=get_doc_help(actions.cmd_repeat), description=get_doc_description(actions.cmd_repeat))
+    parse_repeat.add_argument("item", type=str, help=get_doc_param(actions.cmd_repeat, "item"))
+    parse_repeat.add_argument("date", type=str, nargs="?", help=get_doc_param(actions.cmd_repeat, "date"))
+    
     parse_tasked = subparser.add_parser("tasked", help=get_doc_help(actions.cmd_tasked), description=get_doc_description(actions.cmd_tasked))
     parse_tasked.add_argument("initiator", type=to_unicode, nargs="?", help=get_doc_param(actions.cmd_tasked, "initiator"))
     parse_tasked.add_argument("--all", action="store_true", help=get_doc_param(actions.cmd_tasked, "all"))
