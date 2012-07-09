@@ -118,18 +118,6 @@ if __name__ == '__main__':
     cconf.backup_dir = config.get("archive", "backup_dir")
     cconf.archive_unsorted_filename = config.get("archive", "archive_unsorted_filename")
     cconf.archive_filename_scheme = config.get("archive", "archive_filename_scheme")
-    # colors for parts of an item
-    cconf.col_default = get_colors(config.get("display", "col_default"))
-    cconf.col_context = get_colors(config.get("display", "col_context"))
-    cconf.col_project = get_colors(config.get("display", "col_project"))
-    cconf.col_delegate = get_colors(config.get("display", "col_delegate"))
-    cconf.col_id = get_colors(config.get("display", "col_id"))
-    # colors for lines of an item
-    cconf.col_item_prio = get_colors(config.get("display", "col_item_prio"))
-    cconf.col_item_overdue = get_colors(config.get("display", "col_item_overdue"))
-    cconf.col_item_today = get_colors(config.get("display", "col_item_today"))
-    cconf.col_item_report = get_colors(config.get("display", "col_item_report"))
-    cconf.col_item_done = get_colors(config.get("display", "col_item_done"))
     
     parser = argparse.ArgumentParser(
         description="Todo.txt file CLI interface", 
@@ -202,14 +190,14 @@ if __name__ == '__main__':
     # Overview functionality
     # -------------------------------------------------
 
-    parse_agenda = subparser.add_parser("agenda", help=get_doc_help(actions.cmd_agenda), description=get_doc_description(actions.cmd_agenda))
+    parse_agenda = subparser.add_parser("agenda", aliases=("ag",), help=get_doc_help(actions.cmd_agenda), description=get_doc_description(actions.cmd_agenda))
     parse_agenda.add_argument("date", type=str, nargs="?", help=get_doc_param(actions.cmd_agenda, "date"))
 
     parse_context = subparser.add_parser("context", aliases=("ctx",), help=get_doc_help(actions.cmd_context), description=get_doc_description(actions.cmd_context))
     parse_context.add_argument("name", type=str, help=get_doc_param(actions.cmd_context, "name"), nargs="?")
     parse_context.add_argument("--all", action="store_true", help=get_doc_param(actions.cmd_context, "all"))
     
-    parse_overdue = subparser.add_parser("overdue", help=get_doc_help(actions.cmd_overdue), description=get_doc_description(actions.cmd_overdue))
+    parse_overdue = subparser.add_parser("overdue", aliases=("over", "od"), help=get_doc_help(actions.cmd_overdue), description=get_doc_description(actions.cmd_overdue))
     
     parse_project = subparser.add_parser("project", aliases=("pr",), help=get_doc_help(actions.cmd_project), description=get_doc_description(actions.cmd_project))
     parse_project.add_argument("name", type=str, nargs="?", help=get_doc_param(actions.cmd_project, "name"))
@@ -244,6 +232,21 @@ if __name__ == '__main__':
     
     # parse the command line parameters
     args = parser.parse_args()
+    
+    # output color handling
+    cconf.no_colors = args.nc
+    color_settings = ("col_default", "col_context", "col_project", "col_delegate", "col_id", "col_item_prio", "col_item_overdue",
+                      "col_item_today", "col_item_report", "col_item_done")
+    # set all colors specified in the configuration file
+    for color in color_settings:
+        if cconf.no_colors:
+            # no color flag is given
+            to_col = ""
+        else:
+            # get color from configuration file
+            to_col = get_colors(config.get("display", color))
+        setattr(cconf, color, to_col)
+    
 #    # set additional data that could be important for actions
 #    args.config = config
 #    args.config_file = config_file

@@ -657,7 +657,7 @@ def cmd_delay(tl, args):
                 if not args.force:
                     print(" ", cr.render(item))
                     answer = raw_input("Delaying the preceding item's date from %s to %s (y/N)?" % 
-                        (item.due_date, new_date)).strip().lower()
+                        (from_date(item.due_date), from_date(new_date))).strip().lower()
                     if answer != "y":
                         return
                 # do the actual replacement
@@ -836,6 +836,9 @@ def cmd_check(tl, args):
 def cmd_repeat(tl, args):
     """marks the todo item as done and reenters it after the specified time
     
+    :description: This command is for frequently occurring todo items, like e.g. a bi-weekly
+                  status report.
+    
     Required fields of :param:`args`:
     * item: the index number of the item from which something should be detached
     * date: the relative or absolute date when the item is due again 
@@ -856,3 +859,5 @@ cmd_rm = cmd_del = cmd_remove
 cmd_ctx = cmd_context
 cmd_pr = cmd_project
 cmd_rep = cmd_report
+cmd_od = cmd_over = cmd_overdue
+cmd_ag = cmd_agenda
