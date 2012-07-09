@@ -26,20 +26,21 @@ class TodoItem(object):
         self.done = None
         self.is_report = None
         self.nr = None
+        self.dirty = False
         self.line_nr = sys.maxint
         # find all special syntax
-        self.parse()
+        self._parse()
         # fix dates on properties
-        self.fix_properties()
+        self._fix_properties_on_load()
     
     
     def set_date(self, prop_name, date_or_str):
-        if date_or_str == None:
-            del self.properties[prop_name]
+        if not date_or_str: 
+            self.replace_or_add_prop(prop_name, None)
         elif isinstance(date_or_str, basestring):
-            self.properties[prop_name] = to_date(date_or_str)
+            self.replace_or_add_prop(prop_name, date_or_str, to_date(date_or_str))
         elif isinstance(date_or_str, (datetime.date, datetime.datetime)):
-            self.properties[prop_name] = date_or_str
+            self.replace_or_add_prop(prop_name, from_date(date_or_str), date_or_str)
         else:
             print("ERROR: setting non-date or non-string")
 
@@ -76,10 +77,6 @@ class TodoItem(object):
         return self.properties.get("id", None)
     
     def set_id(self, id_str):
-        if not id_str:
-            del self.properties["id"]
-        else:
-            self.properties["id"] = id_str
         self.replace_or_add_prop("id", id_str)
     
     due_date = property(fget = get_due_date, fset = set_due_date)
@@ -150,6 +147,7 @@ class TodoItem(object):
         # remove "x " prefix
         if self.text.startswith("x "):
             self.text = self.text[2:]
+            self.dirty = True
     
     
     def set_to_done(self):
@@ -203,34 +201,35 @@ class TodoItem(object):
                 self.text = self.text.replace(match, "")
             # replacing may leave multiple adjacent whitespaces - remove those
             self.text = " ".join(self.text.split())
-            return
-        
-        if real_property_value:
-            self.properties[property_name] = real_property_value
         else:
-            self.properties[property_name] = new_property_value
-        
-        if len(matches) > 0:
-            # replacing a property: only replace the first occurrence
-            self.text = self.text.replace(matches[0], "%s:%s" % (property_name, new_property_value), 1)
-            # and remove all further occurrences
-            for match in matches[1:]:
-                self.text = self.text.replace(match, "")
-        else:
-            # adding a new property
-            self.text = self.text.strip() + " %s:%s" % (property_name, new_property_value)
+            if real_property_value:
+                self.properties[property_name] = real_property_value
+            else:
+                self.properties[property_name] = new_property_value
+            
+            if len(matches) > 0:
+                # replacing a property: only replace the first occurrence
+                self.text = self.text.replace(matches[0], "%s:%s" % (property_name, new_property_value), 1)
+                # and remove all further occurrences
+                for match in matches[1:]:
+                    self.text = self.text.replace(match, "")
+            else:
+                # adding a new property
+                self.text = self.text.strip() + " %s:%s" % (property_name, new_property_value)
+        self.dirty = True
+        return self
     
     
-    def parse(self):
+    def _parse(self):
         """executes the different parsers
         """
         parse_fns = dir(parsers)
         for p in parse_fns:
-            if p.startswith("parse"):
+            if p.startswith("_parse"):
                 getattr(parsers, p)(self)
     
     
-    def fix_properties(self):
+    def _fix_properties_on_load(self):
         """normalizes property names and transforms date properties to a readable / managable form
         """
         props = self.properties

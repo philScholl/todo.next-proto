@@ -104,20 +104,25 @@ if __name__ == '__main__':
     
     # get configuration values and store them in a borg
     cconf = ConfigBorg()
-    cconf.config_file = config_file
-    cconf.todo_file = todo_filename
-    cconf.editor = config.get("todo", "editor")
-    cconf.sort = config.getboolean("todo", "sort")
-    # are ids displayed / automatically generated?
-    cconf.id_support = config.getboolean("extensions", "id_support")
-    # which properties / fields are shortened
-    cconf.shorten = config.get("display", "shorten").lower().split()
-    # which properties / fields are suppressed
-    cconf.suppress = config.get("display", "suppress").lower().split()
-    # archiving and backup folders / filenames
-    cconf.backup_dir = config.get("archive", "backup_dir")
-    cconf.archive_unsorted_filename = config.get("archive", "archive_unsorted_filename")
-    cconf.archive_filename_scheme = config.get("archive", "archive_filename_scheme")
+    try:
+        cconf.config_file = config_file
+        cconf.todo_file = todo_filename
+        cconf.editor = config.get("todo", "editor")
+        cconf.sort = config.getboolean("todo", "sort")
+        # are ids displayed / automatically generated?
+        cconf.id_support = config.getboolean("extensions", "id_support")
+        # which properties / fields are shortened
+        cconf.shorten = config.get("display", "shorten").lower().split()
+        # which properties / fields are suppressed
+        cconf.suppress = config.get("display", "suppress").lower().split()
+        # archiving and backup folders / filenames
+        cconf.backup_dir = config.get("archive", "backup_dir")
+        cconf.archive_unsorted_filename = config.get("archive", "archive_unsorted_filename")
+        cconf.archive_filename_scheme = config.get("archive", "archive_filename_scheme")
+    except ConfigParser.Error, ex:
+        print("Your configuration file seems to be incorrect. Please check %s." % config_file)
+        print(ex)
+        quit(-1)
     
     parser = argparse.ArgumentParser(
         description="Todo.txt file CLI interface", 
@@ -244,7 +249,11 @@ if __name__ == '__main__':
             to_col = ""
         else:
             # get color from configuration file
-            to_col = get_colors(config.get("display", color))
+            try:
+                to_col = get_colors(config.get("display", color))
+            except ConfigParser.Error, ex:
+                # TODO: log error
+                to_col = ""
         setattr(cconf, color, to_col)
     
 #    # set additional data that could be important for actions
