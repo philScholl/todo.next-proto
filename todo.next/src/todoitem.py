@@ -225,7 +225,7 @@ class TodoItem(object):
         """
         parse_fns = dir(parsers)
         for p in parse_fns:
-            if p.startswith("_parse"):
+            if p.startswith("parse"):
                 getattr(parsers, p)(self)
     
     

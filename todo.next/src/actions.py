@@ -352,7 +352,7 @@ def cmd_agenda(tl, args):
         # default date used when no done date is specified
         na_date = datetime.datetime(1970, 1, 1)
         # sort filtered list by "due" date and whether they are already marked as "done" 
-        agenda_items.sort(key=lambda x: (x.done ,x.due_date) or (x.done, na_date))
+        agenda_items.sort(key=lambda x: (x.done, x.due_date) or (x.done, na_date))
         # group report/done items by date
         for keys, groups in groupby(agenda_items, 
             lambda x: ((x.due_date or na_date).year, (x.due_date or na_date).month, (x.due_date or na_date).day)
