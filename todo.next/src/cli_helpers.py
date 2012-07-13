@@ -176,6 +176,17 @@ def get_editor_input(initial_text):
     return result
 
 
+def confirm_action(text, positive=["y",]):
+    answer = raw_input(text).strip().lower()
+    if answer not in positive:
+        return False
+    return True
+
+def input_choice(text, choices, abort = ["x", ""]):
+    choices_type = type(choices[0])
+    answer = raw_input(text).strip()
+    return choices_type(answer)
+
 class ColorRenderer(object):
     """
     """

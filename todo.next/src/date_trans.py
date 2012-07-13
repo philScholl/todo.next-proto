@@ -134,7 +134,7 @@ def get_date_by_weekday(weekday_name, reference_date = None):
         reference_date = datetime.datetime.now()         
     wday_now = int(reference_date.strftime("%w"))
     wday_then = weekdays.get(weekday_name, None)
-    if not wday_then:
+    if wday_then == None:
         return None
     if wday_now == wday_then:
         # one week later

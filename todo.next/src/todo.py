@@ -9,7 +9,7 @@ from __future__ import print_function
 import actions
 from borg import ConfigBorg
 from todolist import TodoList
-from cli_helpers import get_doc_help, get_doc_param, get_doc_description, get_colors
+from cli_helpers import get_doc_help, get_doc_param, get_doc_description, get_colors, confirm_action
 import argparse, os, codecs, sys
 import ConfigParser
 
@@ -52,8 +52,7 @@ def to_unicode(string):
 def create_config_wizard():
     config = ConfigParser.ConfigParser()
     # ask for creation of configuration
-    answer = raw_input("No configuration found, do you want to create a new configuration (y/N)?").lower().strip()
-    if answer != "y":
+    if not confirm_action("No configuration found, do you want to create a new configuration (y/N)?"):
         print("So, next time perhaps...")
         quit(0)
     # set standard todo file name
@@ -63,11 +62,9 @@ def create_config_wizard():
         todo_filename = sys.argv[1]
     todo_filename = os.path.abspath(todo_filename)
     # ask for confirmation if the file should be created
-    answer = raw_input("Do you want to create your todo file with the standard name '%s' (y/N)?" % todo_filename).lower().strip()
-    if answer != "y":
+    if not confirm_action("Do you want to create your todo file with the standard name '%s' (y/N)?" % todo_filename):
         # choose an own name
-        answer = raw_input("Do you want to choose another file name (y/N)?").lower().strip()
-        if answer != "y":
+        if not confirm_action("Do you want to choose another file name (y/N)?"):
             return None
         todo_filename = os.path.abspath(raw_input("Please enter the path/filename of your todo file: ").strip())
     if os.path.exists(todo_filename):
@@ -168,6 +165,10 @@ if __name__ == '__main__':
     parse_list.add_argument("search_string", type=to_unicode, nargs="?", help=get_doc_param(actions.cmd_list, "search_string"))
     parse_list.add_argument("--all", action="store_true", help=get_doc_param(actions.cmd_list, "all"))
     parse_list.add_argument("--regex", action="store_true", help=get_doc_param(actions.cmd_list, "regex"))
+
+    parse_lsa = subparser.add_parser("lsa", help=get_doc_help(actions.cmd_lsa), description=get_doc_description(actions.cmd_lsa))
+    parse_lsa.add_argument("search_string", type=to_unicode, nargs="?", help=get_doc_param(actions.cmd_lsa, "search_string"))
+    parse_lsa.add_argument("--regex", action="store_true", help=get_doc_param(actions.cmd_lsa, "regex"))
 
     parse_open = subparser.add_parser("open", help=get_doc_help(actions.cmd_open), description=get_doc_description(actions.cmd_open))
     parse_open.add_argument("item", type=str, help=get_doc_param(actions.cmd_open, "item"))

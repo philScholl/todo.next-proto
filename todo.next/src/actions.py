@@ -8,7 +8,7 @@ Contains all actions that can be executed by ``todo.next``
 .. moduleauthor:: Philipp Scholl <Phil@>
 """
 from __future__ import print_function
-from cli_helpers import ColorRenderer, get_editor_input, open_editor
+from cli_helpers import ColorRenderer, get_editor_input, open_editor, confirm_action
 from date_trans import to_date, is_same_day, from_date
 from parsers import re_urls
 from borg import ConfigBorg
@@ -90,8 +90,7 @@ def cmd_remove(tl, args):
             print("Do you really want to remove the following item(s):")
             for item in item_list:
                 print(" ", cr.render(item))
-            answer = raw_input("Please confirm (y/N): ").lower().strip()
-            if answer == "y":
+            if confirm_action("Please confirm (y/N): "):
                 for item in item_list:
                     tl.remove_item(item)
             else:
@@ -569,8 +568,7 @@ def cmd_backup(tl, args):
     dst_fn = os.path.join(backup_folder, filename)
     if os.path.exists(dst_fn):
         # file already exists: what to do?
-        answer = raw_input("File %s already exists. Overwrite (y/N) " % dst_fn).lower().strip()
-        if answer != "y":
+        if not confirm_action("File %s already exists. Overwrite (y/N) " % dst_fn):
             print("  Aborting...")
             quit(0)
         else:
@@ -656,9 +654,8 @@ def cmd_delay(tl, args):
                 # ask for confirmation
                 if not args.force:
                     print(" ", cr.render(item))
-                    answer = raw_input("Delaying the preceding item's date from %s to %s (y/N)?" % 
-                        (from_date(item.due_date), from_date(new_date))).strip().lower()
-                    if answer != "y":
+                    if not confirm_action("Delaying the preceding item's date from %s to %s (y/N)?" % 
+                        (from_date(item.due_date), from_date(new_date))):
                         return
                 # do the actual replacement
                 tl.replace_or_add_prop(item, "due", from_date(new_date), new_date)
@@ -666,8 +663,7 @@ def cmd_delay(tl, args):
             new_date = to_date(args.date)
             if not args.force:
                 print(" ", cr.render(item))
-                answer = raw_input("The preceding item has no due date set, set to %s (y/N)?" % new_date).strip().lower()
-                if answer != "y":
+                if not confirm_action("The preceding item has no due date set, set to %s (y/N)?" % from_date(new_date)):
                     return
                 tl.replace_or_add_prop(item, "due", from_date(new_date), new_date)
         print(" ", cr.render(item))
@@ -767,8 +763,7 @@ def cmd_attach(tl, args):
 
             if item.properties.get("file", None):
                 print("A file is already attached to this item: %s" % item.properties["file"])
-                answer = raw_input("Do you want to replace this file reference with the file '%s' (y/N)" % path).lower().strip()
-                if answer != "y":
+                if not confirm_action("Do you want to replace this file reference with the file '%s' (y/N)" % path):
                     quit(0)
             print("Attaching file", path)
             tl.replace_or_add_prop(item, "file", path)
@@ -850,6 +845,19 @@ def cmd_repeat(tl, args):
         tl.replace_or_add_prop(new_item, "due", args.date, to_date(args.date))
         print("Marked todo item as 'done' and reinserted:")
         print(" ", cr.render(new_item))
+        
+
+def cmd_lsa(tl, args):
+    """lists all todo items (current and done) matching the given expression, equivalent to "list --all"
+    
+    :description: If no search query is given, all items are listed.
+    
+    Required fields of :param:`args`:
+    * search_string: a search string
+    * regex: if given, the search string is interpreted as a regular expression
+    """
+    args.all = True
+    cmd_list(tl, args)
         
     
 # Aliases
