@@ -216,6 +216,9 @@ class ColorRenderer(object):
     def wrap_id(self, tid, reset = False):
         return self.conf.col_id + tid + (RESETMARKER if not reset else self.conf.col_default)
     
+    def wrap_marker(self, marker, reset = False):
+        return self.conf.col_marker + marker + (RESETMARKER if not reset else self.conf.col_default)
+    
     def wrap_prioritized(self, line):
         line = line.replace(RESETMARKER, self.conf.col_item_prio)
         return self.conf.col_item_prio + line + self.conf.col_default
@@ -271,6 +274,9 @@ class ColorRenderer(object):
         for tohi in item.delegated_from:
             tohi = "<<" + tohi
             text = text.replace(tohi, self.wrap_delegate(tohi))
+        for tohi in item.markers:
+            tohi = "(%s)" % tohi
+            text = text.replace(tohi, self.wrap_marker(tohi))
         
         if item.nr == None:
             prefix = "[   ] "

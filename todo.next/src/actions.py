@@ -438,21 +438,24 @@ def cmd_stats(tl, args):
                 counter["open"] += 1
             if item.priority:
                 counter["prioritized"] += 1
-            if item.is_overdue():
+            if item.is_overdue() and not item.done:
                 counter["overdue"] += 1
+            if item.is_still_open_today() and not item.done:
+                counter["today"] += 1
             if item.is_report:
                 counter["report"] += 1
             delegates.update(item.delegated_to)
             delegates.update(item.delegated_from)
         print("Total number of items: %d" % counter["total"])
-        print(cr.wrap_done("Done items           : %d" % counter["done"]))
         print("Open items           : %d" % counter["open"])
         print(cr.wrap_prioritized("Prioritized items    : %d" % counter["prioritized"]))
         print(cr.wrap_overdue("Overdue items        : %d" % counter["overdue"]))
+        print(cr.wrap_today("Items due today      : %d" % counter["today"]))
+        print(cr.wrap_done("Done items           : %d" % counter["done"]))
         print(cr.wrap_report("Report items         : %d" % counter["report"]))
 
 
-def cmd_open(tl, args):
+def cmd_call(tl, args):
     """opens either an URL, a file or mail program depending on information that is attached to the todo item
     
     Required fields of :param:`args`:
@@ -858,8 +861,35 @@ def cmd_lsa(tl, args):
     """
     args.all = True
     cmd_list(tl, args)
-        
+
+
+def cmd_mark(tl, args):
+    """lists all items with markers (e.g. '(!)')
     
+    :description: Markers can be used to denote a todo item classification, e.g.
+        an open question or an information ('(i)'). If no marker parameter
+        is given, all found markers are listed.
+    
+    Required fields of :param:`args`:
+    * marker: a single character that denotes the type of the marker to list.
+    * all: if given, also the done todo and report items are shown
+    """
+    with ColorRenderer() as cr:
+        marker_dict = collections.defaultdict(list)
+        for item in tl.list_items(lambda x: True if args.all or not (x.done or x.is_report) else False):
+            for marker in item.markers:
+                marker_dict[marker].append(item)
+        if args.marker:
+            #show project if the given name (partially) matches the project identifier
+            args_list = [name for name in sorted(marker_dict) if args.marker == name]
+        else:
+            # show all sorted projects
+            args_list = sorted(marker_dict)
+        for marker in args_list:
+            print(cr.wrap_marker("(%s)" % marker, reset=True))
+            for item in sorted(marker_dict[marker], cmp=tl.default_sort):
+                print(" ", cr.render(item))
+        
 # Aliases
 cmd_ls = cmd_list
 cmd_ed = cmd_edit
@@ -869,3 +899,4 @@ cmd_pr = cmd_project
 cmd_rep = cmd_report
 cmd_od = cmd_over = cmd_overdue
 cmd_ag = cmd_agenda
+cmd_x = cmd_done

@@ -31,6 +31,7 @@ col_context = - RED -
 col_project = - MAGENTA -
 col_delegate = BLACK YELLOW BRIGHT
 col_id = BLUE BLACK BRIGHT
+col_marker = BLUE BLACK DIM
 # for whole items
 col_item_prio = WHITE BLACK BRIGHT
 col_item_overdue = RED BLACK BRIGHT

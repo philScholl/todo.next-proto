@@ -142,7 +142,10 @@ if __name__ == '__main__':
     parse_attach = subparser.add_parser("attach", help=get_doc_help(actions.cmd_attach), description=get_doc_description(actions.cmd_attach))
     parse_attach.add_argument("item", type=str, help=get_doc_param(actions.cmd_attach, "item"))
     parse_attach.add_argument("location", type=str, help=get_doc_param(actions.cmd_attach, "location"))
-    
+
+    parse_call = subparser.add_parser("call", help=get_doc_help(actions.cmd_call), description=get_doc_description(actions.cmd_call))
+    parse_call.add_argument("item", type=str, help=get_doc_param(actions.cmd_call, "item"))
+        
     parse_delay = subparser.add_parser("delay", help=get_doc_help(actions.cmd_delay), description=get_doc_description(actions.cmd_delay))
     parse_delay.add_argument("item", type=str, nargs="?", help=get_doc_param(actions.cmd_delay, "item"))
     parse_delay.add_argument("date", type=str, nargs="?", help=get_doc_param(actions.cmd_delay, "date"))
@@ -155,7 +158,7 @@ if __name__ == '__main__':
     parse_detach = subparser.add_parser("detach", help=get_doc_help(actions.cmd_detach), description=get_doc_description(actions.cmd_detach))
     parse_detach.add_argument("item", type=str, help=get_doc_param(actions.cmd_detach, "item"))
 
-    parse_done = subparser.add_parser("done", help=get_doc_help(actions.cmd_done), description=get_doc_description(actions.cmd_done))
+    parse_done = subparser.add_parser("done", aliases=("x",), help=get_doc_help(actions.cmd_done), description=get_doc_description(actions.cmd_done))
     parse_done.add_argument("items", type=str, nargs="+", help=get_doc_param(actions.cmd_done, "items"))
 
     parse_edit = subparser.add_parser("edit", aliases=("ed",), help=get_doc_help(actions.cmd_edit), description=get_doc_description(actions.cmd_edit))
@@ -169,9 +172,6 @@ if __name__ == '__main__':
     parse_lsa = subparser.add_parser("lsa", help=get_doc_help(actions.cmd_lsa), description=get_doc_description(actions.cmd_lsa))
     parse_lsa.add_argument("search_string", type=to_unicode, nargs="?", help=get_doc_param(actions.cmd_lsa, "search_string"))
     parse_lsa.add_argument("--regex", action="store_true", help=get_doc_param(actions.cmd_lsa, "regex"))
-
-    parse_open = subparser.add_parser("open", help=get_doc_help(actions.cmd_open), description=get_doc_description(actions.cmd_open))
-    parse_open.add_argument("item", type=str, help=get_doc_param(actions.cmd_open, "item"))
     
     parse_prio = subparser.add_parser("prio", help=get_doc_help(actions.cmd_prio), description=get_doc_description(actions.cmd_prio))
     parse_prio.add_argument("items", type=str, nargs="+", help=get_doc_param(actions.cmd_prio, "items"))
@@ -202,6 +202,10 @@ if __name__ == '__main__':
     parse_context = subparser.add_parser("context", aliases=("ctx",), help=get_doc_help(actions.cmd_context), description=get_doc_description(actions.cmd_context))
     parse_context.add_argument("name", type=str, help=get_doc_param(actions.cmd_context, "name"), nargs="?")
     parse_context.add_argument("--all", action="store_true", help=get_doc_param(actions.cmd_context, "all"))
+
+    parse_mark = subparser.add_parser("mark", help=get_doc_help(actions.cmd_mark), description=get_doc_description(actions.cmd_mark))
+    parse_mark.add_argument("marker", type=str, nargs="?", help=get_doc_param(actions.cmd_mark, "marker"))
+    parse_mark.add_argument("--all", action="store_true", help=get_doc_param(actions.cmd_mark, "all"))
     
     parse_overdue = subparser.add_parser("overdue", aliases=("over", "od"), help=get_doc_help(actions.cmd_overdue), description=get_doc_description(actions.cmd_overdue))
     
@@ -241,7 +245,8 @@ if __name__ == '__main__':
     
     # output color handling
     cconf.no_colors = args.nc
-    color_settings = ("col_default", "col_context", "col_project", "col_delegate", "col_id", "col_item_prio", "col_item_overdue",
+    color_settings = ("col_default", "col_context", "col_project", "col_delegate", "col_id", "col_marker", 
+                      "col_item_prio", "col_item_overdue",
                       "col_item_today", "col_item_report", "col_item_done")
     # set all colors specified in the configuration file
     for color in color_settings:

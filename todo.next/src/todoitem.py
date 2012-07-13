@@ -20,6 +20,7 @@ class TodoItem(object):
         self.text = item_text
         self.properties = {}
         self.urls = []
+        self.markers = []
         self.priority = None
         self.delegated_to, self.delegated_from = [], []
         self.projects, self.contexts = [], []

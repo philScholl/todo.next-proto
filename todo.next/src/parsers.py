@@ -9,6 +9,7 @@
 import re
 
 re_prio = re.compile(r"^\(([A-Z])\)", re.UNICODE)
+re_marker = re.compile(r"\(([^A-Z0-9])\)", re.UNICODE)
 re_context = re.compile(r"(?:^|\s)(@.+?)(?=$|\s)", re.UNICODE)
 re_project = re.compile(r"(?:^|\s)(\+.+?)(?=$|\s)", re.UNICODE)
 # key:value pairs with exception of URLs
@@ -20,6 +21,10 @@ def parse_prio(item):
     match = re_prio.match(item.text)
     if match:
         item.priority = match.group(1)
+    return item
+
+def parse_markers(item):
+    item.markers = re_marker.findall(item.text)
     return item
 
 def parse_urls(item):
