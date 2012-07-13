@@ -253,7 +253,7 @@ def cmd_report(tl, args):
         if args.from_date and args.to_date:
             mode = "RANGE"
         elif args.from_date and not args.to_date:
-            mode = "DAY"
+            mode, args.to_date = "DAY", args.from_date
         else:
             mode, args.from_date, args.to_date = "ALL", na_date, datetime.datetime.now()
 
