@@ -182,6 +182,10 @@ def confirm_action(text, positive=["y",]):
         return False
     return True
 
+def suppress_if_quiet(text, args):
+    if not args.quiet:
+        print(text)
+
 def input_choice(text, choices, abort = ["x", ""]):
     choices_type = type(choices[0])
     answer = raw_input(text).strip()

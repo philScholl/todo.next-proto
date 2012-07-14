@@ -8,7 +8,7 @@ Contains all actions that can be executed by ``todo.next``
 .. moduleauthor:: Philipp Scholl <Phil@>
 """
 from __future__ import print_function
-from cli_helpers import ColorRenderer, get_editor_input, open_editor, confirm_action
+from cli_helpers import ColorRenderer, get_editor_input, open_editor, confirm_action, suppress_if_quiet
 from date_trans import to_date, is_same_day, from_date
 from parsers import re_urls
 from borg import ConfigBorg
@@ -33,23 +33,35 @@ def cmd_list(tl, args):
     * search_string: a search string
     * all: if given, also the done todo and report items are shown
     * regex: if given, the search string is interpreted as a regular expression
-    
+    * ci: if given, the search string is interpreted as case insensitive
     """
     with ColorRenderer() as cr:
+        # case insensitivity
+        if args.ci:
+            flags = re.UNICODE | re.IGNORECASE
+        else:
+            flags = re.UNICODE
+        # no search string given
+        if not args.search_string:
+            args.search_string = "."
+            args.regex = True
+        # given as regular expression
         if args.regex:
-            if not args.search_string:
-                # does not make sense
-                args.regex = False
-            re_search = re.compile(args.search_string, re.UNICODE)
+            re_search = re.compile(args.search_string, flags)
+        else:
+            re_search = re.compile(re.escape(args.search_string), flags)
+        
+        nr = 0
         for item in tl.list_items():
             if (not args.all) and (item.is_report or item.done):
                 # if --all is not set, report and done items are suppressed
                 #print(repr(item.properties))
                 continue
-            if args.regex and re_search.findall(item.text):
+            if re_search.search(item.text):
+                nr += 1 
                 print(cr.render(item))
-            elif not args.search_string or args.search_string in item.text: 
-                print(cr.render(item))
+        suppress_if_quiet("----- %d todo items displayed." % nr, args)
+        
 
 def cmd_add(tl, args):
     """adds a new todo item to the todo list
@@ -70,7 +82,7 @@ def cmd_add(tl, args):
         else:
             # single string 
             item = tl.add_item(args.text)
-        print("Added", cr.render(item))
+        suppress_if_quiet("Added %s" % cr.render(item), args)
         item.check()
 
 
@@ -99,7 +111,7 @@ def cmd_remove(tl, args):
         else:
             for item in item_list:
                 tl.remove_item(item)
-        print("%d todo items have been removed." % len(item_list))
+        suppress_if_quiet("%d todo items have been removed." % len(item_list), args)
 
 
 def cmd_done(tl, args):
@@ -109,10 +121,10 @@ def cmd_done(tl, args):
     * items: the index number of the items to set to 'done'
     """
     with ColorRenderer() as cr:
-        print("Marked following todo items as 'done':")
+        suppress_if_quiet("Marked following todo items as 'done':", args)
         for item in tl.get_items_by_index_list(args.items):
             tl.set_to_done(item)
-            print(" ", cr.render(item))
+            suppress_if_quiet("  %s" % cr.render(item), args)
 
 
 def cmd_reopen(tl, args):
@@ -122,11 +134,11 @@ def cmd_reopen(tl, args):
     * items: the index numbers of the items to reopen
     """
     with ColorRenderer() as cr:
-        print("Setting the following todo items to open again:")
+        suppress_if_quiet("Set the following todo items to open again:", args)
         for item in tl.get_items_by_index_list(args.items):
             tl.reopen(item)
             tl.reindex()
-            print(" ", cr.render(item))
+            suppress_if_quiet("  %s" % cr.render(item), args)
 
 
 def cmd_edit(tl, args):
@@ -154,7 +166,7 @@ def cmd_edit(tl, args):
             # remove new lines
             edited_item = TodoItem(output.replace("\r\n", " ").replace("\n", " ").strip())
             tl.replace_item(item, edited_item)
-            print(cr.render(edited_item))
+            suppress_if_quiet("  %s" % cr.render(edited_item), args)
             edited_item.check()
         except KeyboardInterrupt:
             # editing has been aborted
@@ -179,10 +191,13 @@ def cmd_delegated(tl, args):
             del_list = [args.delegate.lower()]
         else:
             del_list = sorted(to_list)
+        nr = 0
         for delegate in del_list:
             print("Delegated to", cr.wrap_delegate(delegate))
             for item in sorted(to_list[delegate], cmp=tl.default_sort):
+                nr += 1
                 print(" ", cr.render(item))
+        suppress_if_quiet("----- %d todo items displayed." % nr, args)
 
 
 def cmd_tasked(tl, args):
@@ -203,12 +218,14 @@ def cmd_tasked(tl, args):
             ini_list = [args.initiator.lower()]
         else:
             ini_list = sorted(from_list)
-
+        nr = 0
         for initiator in ini_list:
             print("Tasks from", cr.wrap_delegate(initiator))
             for item in sorted(from_list[initiator], cmp=tl.default_sort):
                 print(" ", cr.render(item))
-
+                nr += 1
+        suppress_if_quiet("----- %d todo items displayed." % nr, args)
+            
 
 def cmd_overdue(tl, args):
     """shows all todo items that are overdue
@@ -217,8 +234,11 @@ def cmd_overdue(tl, args):
     """
     with ColorRenderer() as cr:
         print("Overdue todo items:")
+        nr = 0
         for item in tl.list_items(lambda x: not x.done and x.is_overdue()):
             print(" ", cr.render(item))
+            nr += 1
+        suppress_if_quiet("----- %d todo items displayed." % nr, args)
 
 
 def cmd_report(tl, args):
@@ -324,6 +344,8 @@ def cmd_report(tl, args):
             # print the items, finally
             for item in groups:
                 print(" ", cr.render(item))
+        
+        suppress_if_quiet("----- %d todo items displayed." % len(report_list), args)
 
 
 def cmd_agenda(tl, args):
@@ -363,6 +385,7 @@ def cmd_agenda(tl, args):
                 print("Agenda for %d-%02d-%02d:" % keys)
             for item in groups:
                 print(" ", cr.render(item))
+        suppress_if_quiet("----- %d todo items displayed." % len(agenda_items), args)
 
 
 def cmd_config(tl, args):
@@ -394,31 +417,31 @@ def cmd_prio(tl, args):
             old_prio = item.priority
             if new_prio == "x":
                 # remove priority
-                print("  Removing priority:")
+                suppress_if_quiet("  Removing priority:", args)
                 tl.set_priority(item, None)
-                print(" ", cr.render(item))
+                suppress_if_quiet("  %s" % cr.render(item), args)
             elif new_prio == "-":
                 if old_prio in ("Z", None):
                     print("  Can't lower priority of following item:")
                     print(" ", cr.render(item))
                 else:
                     temp_prio = chr(ord(old_prio)+1)
-                    print("  Lower priority from %s to %s:" % (old_prio, temp_prio))
+                    suppress_if_quiet("  Lower priority from %s to %s:" % (old_prio, temp_prio), args)
                     tl.set_priority(item, temp_prio)
-                    print(" ", cr.render(item))
+                    suppress_if_quiet("  %s" % cr.render(item), args)
             elif new_prio == "+":
                 if old_prio in ("A", None):
                     print("  Can't raise priority of following item:")
                     print(" ", cr.render(item))
                 else:
                     temp_prio = chr(ord(old_prio)-1)
-                    print("  Raise priority from %s to %s:" % (old_prio, temp_prio))
+                    suppress_if_quiet("  Raise priority from %s to %s:" % (old_prio, temp_prio), args)
                     tl.set_priority(item, temp_prio)
-                    print(" ", cr.render(item))
+                    suppress_if_quiet("  %s" % cr.render(item), args)
             else:
-                print("  Setting priority from %s to %s:" % (old_prio, new_prio))
+                suppress_if_quiet("  Setting priority from %s to %s:" % (old_prio, new_prio), args)
                 tl.set_priority(item, new_prio)
-                print(" ", cr.render(item))
+                suppress_if_quiet("  %s" % cr.render(item), args)
                 
                 
 def cmd_stats(tl, args):
@@ -507,24 +530,35 @@ def cmd_project(tl, args):
     Required fields of :param:`args`:
     * name: the name of the project to display
     * all: if given, also the done todo items are displayed
+    * ci: if given, the project name is interpreted as case insensitive
     """
     # lists todo items per project (like list, only with internal grouping)
     with ColorRenderer() as cr:
+        # case insensitivity
+        if args.ci:
+            flags = re.UNICODE | re.IGNORECASE
+        else:
+            flags = re.UNICODE
+        if args.name:
+            args.name = re.escape(args.name)
+        else:
+            args.name = "."
+        re_search = re.compile(args.name, flags)
+        
         project_dict = collections.defaultdict(list)
         for item in tl.list_items(lambda x: True if args.all or not (x.done or x.is_report) else False):
             for project in item.projects:
                 project_dict[project].append(item)
-        if args.name:
-            #show project if the given name (partially) matches the project identifier
-            args_list = [name for name in sorted(project_dict) if args.name in name]
-        else:
-            # show all sorted projects
-            args_list = sorted(project_dict)
+        #show project if the given name (partially) matches the project identifier
+        args_list = [name for name in sorted(project_dict) if re_search.search(name)]
+        nr = 0
         for project in args_list:
             print("Project", cr.wrap_project(project, reset=True))
             for item in sorted(project_dict[project], cmp=tl.default_sort):
+                nr += 1
                 print(" ", cr.render(item))
-
+        suppress_if_quiet("----- %d todo items displayed." % nr, args)
+            
 
 def cmd_context(tl, args):
     """lists all todo items per context
@@ -532,23 +566,34 @@ def cmd_context(tl, args):
     Required fields of :param:`args`:
     * name: the name of the context to display
     * all: if given, also the done todo items are displayed
+    * ci: if given, the context name is interpreted as case insensitive
     """
     # lists todo items per context (like list, only with internal grouping)
     with ColorRenderer() as cr:
+        # case insensitivity
+        if args.ci:
+            flags = re.UNICODE | re.IGNORECASE
+        else:
+            flags = re.UNICODE
+        if args.name:
+            args.name = re.escape(args.name)
+        else:
+            args.name = "."
+        re_search = re.compile(args.name, flags)
+
         context_dict = collections.defaultdict(list)
         for item in tl.list_items(lambda x: True if args.all or not (x.done or x.is_report) else False):
             for context in item.contexts:
                 context_dict[context].append(item)
-        if args.name:
-            #show context if the given name (partially) matches the context identifier
-            args_list = [name for name in sorted(context_dict) if args.name in name]
-        else:
-            args_list = sorted(context_dict)
-        
+        #show context if the given name (partially) matches the context identifier
+        args_list = [name for name in sorted(context_dict) if re_search.search(name)]
+        nr = 0
         for context in args_list:
             print("Context", cr.wrap_context(context, reset=True))
             for item in sorted(context_dict[context], cmp=tl.default_sort):
                 print(" ", cr.render(item))
+                nr += 1 
+        suppress_if_quiet("----- %d todo items displayed." % nr, args)
 
 
 def cmd_backup(tl, args):
@@ -578,10 +623,10 @@ def cmd_backup(tl, args):
             print("  Overwriting %s..." % dst_fn)
     # copying the todo file to the destination
     with codecs.open(conf.todo_file, "r", "utf-8") as src:
-        print("  Copying todo file to %s..." % dst_fn)
+        suppress_if_quiet("  Copying todo file to %s..." % dst_fn, args)
         with codecs.open(dst_fn, "w", "utf-8") as dst:
             dst.write(src.read())
-    print("Successfully backed up todo file.")
+    suppress_if_quiet("Successfully backed up todo file.", args)
 
 
 def cmd_archive(tl, args):
@@ -632,7 +677,7 @@ def cmd_archive(tl, args):
                     # and remove the item from todo list
                     tl.remove_item(item)
         
-        print("Successfully archived %d todo items." % nr_archived)
+        suppress_if_quiet("Successfully archived %d todo items." % nr_archived, args)
 
 
 def cmd_delay(tl, args):
@@ -669,7 +714,7 @@ def cmd_delay(tl, args):
                 if not confirm_action("The preceding item has no due date set, set to %s (y/N)?" % from_date(new_date)):
                     return
                 tl.replace_or_add_prop(item, "due", from_date(new_date), new_date)
-        print(" ", cr.render(item))
+        suppress_if_quiet("  %s" % cr.render(item), args)
 
 
 def cmd_clean(tl, args):
@@ -687,19 +732,31 @@ def cmd_search(tl, args):
     Required fields of :param:`args`:
     * search_string: a search string
     * regex: if given, the search string is interpreted as a regular expression
+    * ci: if given, the search string is interpreted as case insensitive
     """
     with ColorRenderer() as cr:
         conf = ConfigBorg()
+        
+        # case insensitivity
+        if args.ci:
+            flags = re.UNICODE | re.IGNORECASE
+        else:
+            flags = re.UNICODE
+        # no search string given
+        if not args.search_string:
+            args.search_string = "."
+            args.regex = True
+        # given as regular expression
         if args.regex:
-            # search for regex
-            re_search = re.compile(args.search_string, re.UNICODE)
+            re_search = re.compile(args.search_string, flags)
+        else:
+            re_search = re.compile(re.escape(args.search_string), flags)
+
         # store for all matching items
         all_matches = []
         # first, look at current todo list
         for item in tl.list_items():
-            if args.regex and re_search.findall(item.text):
-                all_matches.append((conf.todo_file, item))
-            elif args.search_string in item.text: 
+            if re_search.search(item.text):
                 all_matches.append((conf.todo_file, item))
         
         # get file list of all archive files by replacing all %x-variables with '*' and
@@ -716,9 +773,7 @@ def cmd_search(tl, args):
             # create a new todo list for each archive file
             with TodoList(arch_file) as atl:
                 for item in atl.todolist:
-                    if args.regex and re_search.findall(item.text):
-                        all_matches.append((arch_file, item))
-                    elif args.search_string in item.text: 
+                    if re_search.search(item.text):
                         all_matches.append((arch_file, item))
         
         # sort by filename
@@ -728,7 +783,7 @@ def cmd_search(tl, args):
             print("File '%s':" % filename)
             for item in items:
                 print(" ", cr.render(item[1]))
-        print("%d matches found" % len(all_matches))
+        suppress_if_quiet("%d matching todo items found" % len(all_matches), args)
         
         
 def cmd_attach(tl, args):
@@ -747,7 +802,7 @@ def cmd_attach(tl, args):
 
         if re_urls.match(args.location):
             # we got an URL
-            print("Attaching URL", args.location)
+            suppress_if_quiet("Attaching URL %s" % args.location, args)
             item.text += " %s" % args.location
             item.urls.append(args.location.strip())
             tl.dirty = True
@@ -768,10 +823,10 @@ def cmd_attach(tl, args):
                 print("A file is already attached to this item: %s" % item.properties["file"])
                 if not confirm_action("Do you want to replace this file reference with the file '%s' (y/N)" % path):
                     quit(0)
-            print("Attaching file", path)
+            suppress_if_quiet("Attaching file %s" % path, args)
             tl.replace_or_add_prop(item, "file", path)
             tl.reindex()
-        print(" ", cr.render(item))
+        suppress_if_quiet("  %s" % cr.render(item), args)
 
 
 def cmd_detach(tl, args):
@@ -812,7 +867,7 @@ def cmd_detach(tl, args):
             item = tl.replace_or_add_prop(item, "file", None)
         else:
             item.text = " ".join(item.text.replace(attmnt[1], "").split())
-        print(" ", cr.render(item))
+        suppress_if_quiet(" %s" % cr.render(item), args)
         tl.dirty = True
 
 
@@ -846,8 +901,7 @@ def cmd_repeat(tl, args):
         new_item = tl.add_item(item.text)
         item.set_to_done()
         tl.replace_or_add_prop(new_item, "due", args.date, to_date(args.date))
-        print("Marked todo item as 'done' and reinserted:")
-        print(" ", cr.render(new_item))
+        suppress_if_quiet("Marked todo item as 'done' and reinserted:\n  %s" % cr.render(new_item), args)
         
 
 def cmd_lsa(tl, args):
@@ -858,6 +912,7 @@ def cmd_lsa(tl, args):
     Required fields of :param:`args`:
     * search_string: a search string
     * regex: if given, the search string is interpreted as a regular expression
+    * ci: if given, the search string is interpreted as case insensitive
     """
     args.all = True
     cmd_list(tl, args)
@@ -885,10 +940,15 @@ def cmd_mark(tl, args):
         else:
             # show all sorted projects
             args_list = sorted(marker_dict)
+            
+        nr = 0
         for marker in args_list:
             print(cr.wrap_marker("(%s)" % marker, reset=True))
             for item in sorted(marker_dict[marker], cmp=tl.default_sort):
                 print(" ", cr.render(item))
+                nr += 1
+        suppress_if_quiet("----- %d todo items displayed." % nr, args)
+        
         
 # Aliases
 cmd_ls = cmd_list
