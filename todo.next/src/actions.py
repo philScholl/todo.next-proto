@@ -327,6 +327,7 @@ def cmd_report(tl, args):
         # sort filtered list by "done" date 
         report_list.sort(key=lambda x: x.done_date or na_date)
         
+        nr = 0
         # group report/done items by date
         for keys, groups in groupby(report_list, 
             lambda x: ((x.done_date or na_date).year, (x.done_date or na_date).month, (x.done_date or na_date).day)
@@ -344,8 +345,9 @@ def cmd_report(tl, args):
             # print the items, finally
             for item in groups:
                 print(" ", cr.render(item))
+                nr += 1
         
-        suppress_if_quiet("%d todo items displayed." % len(report_list), args)
+        suppress_if_quiet("%d todo items displayed." % nr, args)
 
 
 def cmd_agenda(tl, args):

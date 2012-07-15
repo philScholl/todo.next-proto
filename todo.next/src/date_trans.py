@@ -9,6 +9,8 @@ Provides simple date transformations and date parsing for todo.next application.
 """
 from __future__ import print_function
 import datetime, re, calendar
+from borg import ConfigBorg
+
 # if dateutil is installed, this makes everything a lot easier
 USE_DATEUTIL = False
 try:
@@ -23,6 +25,7 @@ re_partial_date = re.compile("(\d{1,2})\.(\d{1,2})\.", re.UNICODE)
 # relative form of date, e.g. 'm1w2d' (minus 1 week, 2 days). Month support needs :mod:`dateutil
 re_rel_date = re.compile("^([+-pm]?)(\d{1,2}y)?(\d{1,2}m)?(\d{1,2}w)?(\d{1,3}d)?(\d{1,3}h)?$", re.IGNORECASE)
 
+conf = ConfigBorg()
 
 def add_years(date, nr_of_years):
     """adds years to the given date
@@ -146,7 +149,7 @@ def get_date_by_weekday(weekday_name, reference_date = None):
         # still this week
         return reference_date + datetime.timedelta(days = (wday_then - wday_now))
 
-def to_date(date_string, reference_date = None, custom_date_formats = None):
+def to_date(date_string, reference_date = None):
     """ parses a :class:`datetime` object from a given string
     
     :param:`reference_date` may be one of the following:
@@ -164,8 +167,6 @@ def to_date(date_string, reference_date = None, custom_date_formats = None):
     """
     if not date_string:
         return None
-    if custom_date_formats == None:
-        custom_date_formats = []
     now = datetime.datetime.now()
     if not reference_date:
         # reference date is today (without hours / min)
@@ -193,11 +194,15 @@ def to_date(date_string, reference_date = None, custom_date_formats = None):
         date_string = date_string.replace("_", " ")
 
     # try to parse custom date formats
-    for date_format in custom_date_formats:
+    for date_format in conf.date_formats:
         try:
             # try to parse the custom date formats
-            # NOTE: this does not correct shifting dates into the future!
-            return datetime.datetime.strptime(date_string, date_format.replace("_", " "))
+            # FIXME: this does not correct shifting dates into the future as below!
+            pdate = datetime.datetime.strptime(date_string, date_format.replace("_", " "))
+            if pdate.year == 1900:
+                # no year given, the default year is taken
+                pdate = reference_date.replace(month=pdate.month, day=pdate.day, hour=pdate.hour, minute=pdate.minute) 
+            return pdate
         except ValueError:
             pass
 
