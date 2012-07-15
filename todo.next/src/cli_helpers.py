@@ -14,19 +14,23 @@ from date_trans import shorten_date
 from borg import ConfigBorg
 
 from colorama import init, deinit, Fore, Back, Style
-import re, tempfile, subprocess, os, codecs, time, sys, urlparse
+import re, tempfile, subprocess, os, codecs, time, urlparse
 
 # regex for finding parameters in docstring
 re_docstring_param = re.compile("^\s*\*(.+?)\:(.+?)$", re.UNICODE | re.MULTILINE)
 # regex for finding description
 re_docstring_desc = re.compile("^\s*\:description\:(.+?)^\s*$", re.UNICODE | re.MULTILINE | re.DOTALL)
 
-re_replace_created = re.compile(r"\b(created:[^\s]+?)(?=$|\s)", re.UNICODE)
-re_replace_done = re.compile(r"\b(done:[^\s]+?)(?=$|\s)", re.UNICODE)
-re_replace_due = re.compile(r"\b(due:[^\s]+?)(?=$|\s)", re.UNICODE)
-re_replace_tid = re.compile(r"\b(id:[^\s]+?)(?=$|\s)", re.UNICODE)
+str_re_replace_prop = r"\b(%s:[^\s]+?)(?=$|\s)"
+prop_replace_regex_cache = {}
 
 RESETMARKER = "#resetmarker"
+
+def get_regex_for_replacing_prop(prop):
+    if prop not in prop_replace_regex_cache:
+        # create and cache
+        prop_replace_regex_cache[prop] = re.compile(str_re_replace_prop % prop, re.UNICODE)
+    return prop_replace_regex_cache[prop]
 
 def get_colors(col_string):
     parts = col_string.upper().split()
@@ -220,6 +224,9 @@ class ColorRenderer(object):
     def wrap_id(self, tid, reset = False):
         return self.conf.col_id + tid + (RESETMARKER if not reset else self.conf.col_default)
     
+    def wrap_block(self, tid, reset = False):
+        return self.conf.col_block + tid + (RESETMARKER if not reset else self.conf.col_default)
+    
     def wrap_marker(self, marker, reset = False):
         return self.conf.col_marker + marker + (RESETMARKER if not reset else self.conf.col_default)
     
@@ -242,24 +249,26 @@ class ColorRenderer(object):
     def clean_string(self, item):
         text = item.text
         
-        if "files" in self.conf.shorten and "file" in item.properties:
-            file_name = item.properties.get("file") 
-            if file_name:
-                text = text.replace("file:%s" % file_name, "[%s]"%os.path.basename(file_name))
-        if "urls" in self.conf.shorten and item.urls:
+        for prop in item.properties:
+            if prop in self.conf.shorten:
+                if prop == "file":
+                    # shorten file name
+                    file_name = item.properties[prop]
+                    text = text.replace("file:%s" % file_name, "[%s]" % os.path.basename(file_name))
+                elif prop in ("due", "done", "created", "started"):
+                    # shorten date properties
+                    text = get_regex_for_replacing_prop(prop).sub(
+                        "%s:%s" % (prop, shorten_date(item.properties[prop])), text) 
+            if prop in self.conf.suppress:
+                # remove this property
+                text = get_regex_for_replacing_prop(prop).sub(
+                    "", text)
+        
+        # urls are treated differently        
+        if "url" in self.conf.shorten and item.urls:
             for url in item.urls:
                 text = text.replace(url, "[%s]" % urlparse.urlsplit(url).netloc)
-        if "due" in self.conf.shorten and item.due_date:
-            text = re_replace_due.sub("due:"+shorten_date(item.due_date), text)
-        if "done" in self.conf.shorten and item.done_date:
-            text = re_replace_done.sub("done:"+shorten_date(item.done_date), text)
-        if "created" in self.conf.suppress and item.created_date:
-            # we nearly never need to display the created property, so hide it
-            text = re_replace_created.sub("", text)
-        if item.tid:
-            # remove in in any case
-            text = re_replace_tid.sub("", text)
-        
+
         # remove duplicate whitespace
         return " ".join(text.split())
     
@@ -289,17 +298,22 @@ class ColorRenderer(object):
         # if ids are supported and an tid exists, we replace prefix with that
         if self.conf.id_support and item.tid:
             prefix = "[" + self.wrap_id(item.tid) + "] "
+        if self.conf.id_support and "blockedby" in item.properties:
+            prefix = "<%s> %s" % (self.wrap_block(item.properties["blockedby"]), prefix)
             
-        listitem = "%s%s" % (prefix, text)
-
         if item.is_report:
-            return self.wrap_report(listitem)
-        if item.done:
-            return self.wrap_done(listitem)
-        if item.is_overdue():
-            return self.wrap_overdue(listitem)
-        if item.is_still_open_today():
-            return self.wrap_today(listitem)
-        if item.priority:
-            return self.wrap_prioritized(listitem)
+            listitem = self.wrap_report(text)
+        elif item.done:
+            listitem = self.wrap_done(text)
+        elif item.is_overdue():
+            listitem = self.wrap_overdue(text)
+        elif item.is_still_open_today():
+            listitem = self.wrap_today(text)
+        elif item.priority:
+            listitem = self.wrap_prioritized(text)
+        else:
+            listitem = text
+        
+        listitem = "%s%s" % (prefix, listitem)
+
         return listitem.replace(RESETMARKER, self.conf.col_default)

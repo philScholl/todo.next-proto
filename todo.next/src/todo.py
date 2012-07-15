@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 
 .. see:: https://github.com/ginatrapani/todo.txt-cli/wiki/The-Todo.txt-Format
@@ -257,7 +258,8 @@ if __name__ == '__main__':
 
     # output color handling
     cconf.no_colors = args.no_colors
-    color_settings = ("col_default", "col_context", "col_project", "col_delegate", "col_id", "col_marker", 
+    color_settings = ("col_default", "col_context", "col_project", "col_delegate", "col_id", "col_block", 
+                      "col_marker", 
                       "col_item_prio", "col_item_overdue",
                       "col_item_today", "col_item_report", "col_item_done")
     # set all colors specified in the configuration file

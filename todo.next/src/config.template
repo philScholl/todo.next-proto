@@ -5,6 +5,8 @@ todofile =
 editor =
 # if True, the todo file will be sorted by todo.next, otherwise it is left like as-is
 sort = True
+# specify custom date formats (without whitespace in each date)
+date_formats = %d.%m. %e.%m. %e.%m.%y
 
 [archive]
 # archive directory and files are created based on "done"-date. 
@@ -20,9 +22,9 @@ backup_dir = backup
 # sort
 sort = done_or_todo overdue_flag priority_flag done_date due_date created_date alpha project context done todo
 # properties that will be displayed shortened
-shorten = files urls due done
+shorten = file url due done
 # properties that will be suppressed on display
-suppress = created id
+suppress = created id blockedby blocks
 
 # colors for CLI output
 # format: foreground background style
@@ -31,6 +33,7 @@ col_context = - RED -
 col_project = - MAGENTA -
 col_delegate = BLACK YELLOW BRIGHT
 col_id = BLUE BLACK BRIGHT
+col_block = RED BLACK DIM
 col_marker = BLUE BLACK DIM
 # for whole items
 col_item_prio = WHITE BLACK BRIGHT

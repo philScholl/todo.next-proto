@@ -59,8 +59,8 @@ def cmd_list(tl, args):
                 continue
             if re_search.search(item.text):
                 nr += 1 
-                print(cr.render(item))
-        suppress_if_quiet("----- %d todo items displayed." % nr, args)
+                print(" ", cr.render(item))
+        suppress_if_quiet("%d todo items displayed." % nr, args)
         
 
 def cmd_add(tl, args):
@@ -160,7 +160,7 @@ def cmd_edit(tl, args):
             print("Could not find item '%s'" % args.item)
             return
         
-        print(cr.render(item))
+        print(" ", cr.render(item))
         try:
             output = get_editor_input(item.text)
             # remove new lines
@@ -197,7 +197,7 @@ def cmd_delegated(tl, args):
             for item in sorted(to_list[delegate], cmp=tl.default_sort):
                 nr += 1
                 print(" ", cr.render(item))
-        suppress_if_quiet("----- %d todo items displayed." % nr, args)
+        suppress_if_quiet("%d todo items displayed." % nr, args)
 
 
 def cmd_tasked(tl, args):
@@ -224,7 +224,7 @@ def cmd_tasked(tl, args):
             for item in sorted(from_list[initiator], cmp=tl.default_sort):
                 print(" ", cr.render(item))
                 nr += 1
-        suppress_if_quiet("----- %d todo items displayed." % nr, args)
+        suppress_if_quiet("%d todo items displayed." % nr, args)
             
 
 def cmd_overdue(tl, args):
@@ -238,7 +238,7 @@ def cmd_overdue(tl, args):
         for item in tl.list_items(lambda x: not x.done and x.is_overdue()):
             print(" ", cr.render(item))
             nr += 1
-        suppress_if_quiet("----- %d todo items displayed." % nr, args)
+        suppress_if_quiet("%d todo items displayed." % nr, args)
 
 
 def cmd_report(tl, args):
@@ -345,7 +345,7 @@ def cmd_report(tl, args):
             for item in groups:
                 print(" ", cr.render(item))
         
-        suppress_if_quiet("----- %d todo items displayed." % len(report_list), args)
+        suppress_if_quiet("%d todo items displayed." % len(report_list), args)
 
 
 def cmd_agenda(tl, args):
@@ -385,7 +385,7 @@ def cmd_agenda(tl, args):
                 print("Agenda for %d-%02d-%02d:" % keys)
             for item in groups:
                 print(" ", cr.render(item))
-        suppress_if_quiet("----- %d todo items displayed." % len(agenda_items), args)
+        suppress_if_quiet("%d todo items displayed." % len(agenda_items), args)
 
 
 def cmd_config(tl, args):
@@ -521,7 +521,7 @@ def cmd_call(tl, args):
                 actions[choice][0](actions[choice][1])
         else:
             print("No file / url / email found in task:")
-            print(cr.render(item))
+            print(" ", cr.render(item))
 
 
 def cmd_project(tl, args):
@@ -557,7 +557,7 @@ def cmd_project(tl, args):
             for item in sorted(project_dict[project], cmp=tl.default_sort):
                 nr += 1
                 print(" ", cr.render(item))
-        suppress_if_quiet("----- %d todo items displayed." % nr, args)
+        suppress_if_quiet("%d todo items displayed." % nr, args)
             
 
 def cmd_context(tl, args):
@@ -593,7 +593,7 @@ def cmd_context(tl, args):
             for item in sorted(context_dict[context], cmp=tl.default_sort):
                 print(" ", cr.render(item))
                 nr += 1 
-        suppress_if_quiet("----- %d todo items displayed." % nr, args)
+        suppress_if_quiet("%d todo items displayed." % nr, args)
 
 
 def cmd_backup(tl, args):
@@ -867,7 +867,7 @@ def cmd_detach(tl, args):
             item = tl.replace_or_add_prop(item, "file", None)
         else:
             item.text = " ".join(item.text.replace(attmnt[1], "").split())
-        suppress_if_quiet(" %s" % cr.render(item), args)
+        suppress_if_quiet("  %s" % cr.render(item), args)
         tl.dirty = True
 
 
@@ -880,7 +880,7 @@ def cmd_check(tl, args):
         nr = 0
         for item, warnings in tl.check_items():
             nr += 1
-            print(cr.render(item))
+            print(" ", cr.render(item))
             for warning in warnings:
                 print(" ", warning)
         print("%s warning(s) have been found" % (nr or "No"))
@@ -947,7 +947,7 @@ def cmd_mark(tl, args):
             for item in sorted(marker_dict[marker], cmp=tl.default_sort):
                 print(" ", cr.render(item))
                 nr += 1
-        suppress_if_quiet("----- %d todo items displayed." % nr, args)
+        suppress_if_quiet("%d todo items displayed." % nr, args)
         
         
 # Aliases

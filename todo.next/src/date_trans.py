@@ -24,7 +24,7 @@ re_partial_date = re.compile("(\d{1,2})\.(\d{1,2})\.", re.UNICODE)
 re_rel_date = re.compile("^([+-pm]?)(\d{1,2}y)?(\d{1,2}m)?(\d{1,2}w)?(\d{1,3}d)?(\d{1,3}h)?$", re.IGNORECASE)
 
 
-def add_year(date, nr_of_years):
+def add_years(date, nr_of_years):
     """adds years to the given date
     
     This is only a problem with the 29th of February. This is handled here.
@@ -77,7 +77,7 @@ def get_relative_date(rel_string, reference_date = None):
         rel = datetime.timedelta(days=ddays, weeks=dweeks, hours=dhours)
         if dyears:
             # add years
-            rel = add_year(rel, dyears) 
+            rel = add_years(rel, dyears) 
     if sign in ("-", "m"):
         return reference_date - rel
     else:
@@ -146,7 +146,7 @@ def get_date_by_weekday(weekday_name, reference_date = None):
         # still this week
         return reference_date + datetime.timedelta(days = (wday_then - wday_now))
 
-def to_date(date_string, reference_date = None):
+def to_date(date_string, reference_date = None, custom_date_formats = None):
     """ parses a :class:`datetime` object from a given string
     
     :param:`reference_date` may be one of the following:
@@ -157,11 +157,15 @@ def to_date(date_string, reference_date = None):
     :type date_string: :class:`str`
     :param reference_date: a given date that serves as the reference point for relative date calculations. If ``None``, today's date 00:00am is used.
     :type reference_date: a :class:`datetime` object
+    :param custom_date_formats: a list of custom date formats to check first
+    :type custom_date_formats: :class:`list`(:class:`str`)
     :return: :class:`datetime` object representing the desired date, or if not parsable, the given date string prepended with ``?``
     :rtype: :class:`datetime` or :class:`str`
     """
     if not date_string:
         return None
+    if custom_date_formats == None:
+        custom_date_formats = []
     now = datetime.datetime.now()
     if not reference_date:
         # reference date is today (without hours / min)
@@ -187,13 +191,23 @@ def to_date(date_string, reference_date = None):
     # clean underscores
     if "_" in date_string:
         date_string = date_string.replace("_", " ")
+
+    # try to parse custom date formats
+    for date_format in custom_date_formats:
+        try:
+            # try to parse the custom date formats
+            # NOTE: this does not correct shifting dates into the future!
+            return datetime.datetime.strptime(date_string, date_format.replace("_", " "))
+        except ValueError:
+            pass
+
     try:
         if USE_DATEUTIL:
             # try to delegate parsing task to dateutil
             return parse(date_string, default=reference_date)
         else:
-            # FIXME: fix format string
-            return datetime.datetime.strptime(date_string, "%Y-%m-%d_H:%M")
+            # try the default date format
+            return datetime.datetime.strptime(date_string, "%Y-%m-%d %H:%M")
     except:
         # date of form xx.xx.
         match = re_partial_date.match(date_string)
@@ -205,15 +219,16 @@ def to_date(date_string, reference_date = None):
             # without year, date falls into past -> move to next year
             if now > result:
                 # add a year
-                result = add_year(result, 1)
+                result = add_years(result, 1)
             return result
+
+        # show that we could not interpret the date string - return a string
+        if not date_string.startswith("?"):
+            result = "?" + date_string
         else:
-            # show that we could not interpret the date string
-            if not date_string.startswith("?"):
-                result =  "?" + date_string.replace(" ", "_")
-            else:
-                result = date_string.replace(" ", "_")
-            return result
+            result = date_string
+        return result.replace(" ", "_")
+
 
 def from_date(date):
     if not date:
