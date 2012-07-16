@@ -14,7 +14,7 @@ import datetime, re, os, sys
 
 class TodoItem(object):
     
-    date_properties = ["due", "done", "created"]
+    date_properties = ["due", "done", "created", "started"]
     
     def __init__(self, item_text):
         self.text = item_text

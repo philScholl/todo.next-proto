@@ -300,6 +300,8 @@ class ColorRenderer(object):
             prefix = "[" + self.wrap_id(item.tid) + "] "
         if self.conf.id_support and "blockedby" in item.properties:
             prefix = "<%s> %s" % (self.wrap_block(item.properties["blockedby"]), prefix)
+        if "started" in item.properties and not item.done:
+            prefix = "%s %s" % (self.wrap_block("*****"), prefix)    
             
         if item.is_report:
             listitem = self.wrap_report(text)

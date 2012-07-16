@@ -141,6 +141,7 @@ def get_date_by_weekday(weekday_name, reference_date = None):
         return None
     if wday_now == wday_then:
         # one week later
+        print("SAME DAY")
         return reference_date + datetime.timedelta(days = 7)
     elif wday_now > wday_then:
         # next week
@@ -149,7 +150,7 @@ def get_date_by_weekday(weekday_name, reference_date = None):
         # still this week
         return reference_date + datetime.timedelta(days = (wday_then - wday_now))
 
-def to_date(date_string, reference_date = None):
+def to_date(date_string, reference_date = None, prospective = False):
     """ parses a :class:`datetime` object from a given string
     
     :param:`reference_date` may be one of the following:
@@ -160,8 +161,8 @@ def to_date(date_string, reference_date = None):
     :type date_string: :class:`str`
     :param reference_date: a given date that serves as the reference point for relative date calculations. If ``None``, today's date 00:00am is used.
     :type reference_date: a :class:`datetime` object
-    :param custom_date_formats: a list of custom date formats to check first
-    :type custom_date_formats: :class:`list`(:class:`str`)
+    :param prospective: indicates whether a date will rather be put into the future
+    :type prospective: bool
     :return: :class:`datetime` object representing the desired date, or if not parsable, the given date string prepended with ``?``
     :rtype: :class:`datetime` or :class:`str`
     """
@@ -170,7 +171,7 @@ def to_date(date_string, reference_date = None):
     now = datetime.datetime.now()
     if not reference_date:
         # reference date is today (without hours / min)
-        reference_date = datetime.datetime(now.year, now.month, now.day)
+        reference_date = datetime.datetime.today()
     # normalize date string
     date_string = date_string.strip().lower()
     # first handle special cases:
@@ -185,10 +186,18 @@ def to_date(date_string, reference_date = None):
         return (now + datetime.timedelta(days=1)).replace(hour=reference_date.hour, minute=reference_date.minute)
     elif date_string in weekdays:
         # a weekday was given
-        return get_date_by_weekday(date_string, reference_date)
+        if prospective:
+            pdate = get_date_by_weekday(date_string, now)
+        else:
+            pdate = get_date_by_weekday(date_string, reference_date)
+        return pdate
     elif re_rel_date.match(date_string):
         # a relative timespan like "-1y5w2d" (1 year, 5 weeks and 2 days)
-        return get_relative_date(date_string, reference_date)
+        if prospective:
+            pdate = get_relative_date(date_string, now)
+        else:
+            pdate = get_relative_date(date_string, reference_date)
+        return pdate
     # clean underscores
     if "_" in date_string:
         date_string = date_string.replace("_", " ")

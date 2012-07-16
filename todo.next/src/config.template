@@ -24,7 +24,7 @@ sort = done_or_todo overdue_flag priority_flag done_date due_date created_date a
 # properties that will be displayed shortened
 shorten = file url due done
 # properties that will be suppressed on display
-suppress = created id blockedby blocks
+suppress = created id blockedby blocks started
 
 # colors for CLI output
 # format: foreground background style

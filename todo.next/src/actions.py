@@ -951,7 +951,38 @@ def cmd_mark(tl, args):
                 nr += 1
         suppress_if_quiet("%d todo items displayed." % nr, args)
         
+
+def cmd_start(tl, args):
+    """sets the 'started' property of an item or lists all started items.
+    
+    :description: If a todo item is picked to be worked on, this command
+        allows setting the started time. Thus, the time it took to work
+        on that item can be derived from 'started' and 'done' time.
+    
+    Required fields of :param:`args`:
+    * item: the index number or id of the todo item which is started
+    """
+    with ColorRenderer() as cr:
+        if not args.item:
+            for item in tl.list_items(lambda x: True if "started" in x.properties and not (x.done or x.is_report) else False):
+                print(" ", cr.render(item))
+        else:
+            item = tl.get_item_by_index(args.item)
+            if not item:
+                print("No item found with number or ID %s" % args.item)
+                return
+            if item.done:
+                print("Todo item has already been set to 'done':")
+                print(" ", cr.render(item))
+                return
+            if "started" in item.properties:
+                print("Todo item has already been started on %s" % to_date(item.properties["started"]))
+                print(" ", cr.render(item))
+                return
+            now = datetime.datetime.now()
+            tl.replace_or_add_prop(item, "started", from_date(now), now)
         
+    
 # Aliases
 cmd_ls = cmd_list
 cmd_ed = cmd_edit
