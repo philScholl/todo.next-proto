@@ -121,9 +121,27 @@ def cmd_done(tl, args):
     * items: the index number of the items to set to 'done'
     """
     with ColorRenderer() as cr:
+        now = datetime.datetime.now()
         suppress_if_quiet("Marked following todo items as 'done':", args)
         for item in tl.get_items_by_index_list(args.items):
             tl.set_to_done(item)
+            # if started property is set, remove it and update duration property
+            if "started" in item.properties:
+                start_time = item.properties["started"]
+                time_delta = now - start_time
+                duration = 0
+                try:
+                    # try to parse existing duration property
+                    duration = int(item.properties.get("duration", 0))
+                except:
+                    pass
+                # add delta time in minutes
+                duration += int(time_delta.total_seconds() / 60) 
+                # remove started property
+                tl.replace_or_add_prop(item, "started", None)
+                # update duration property
+                tl.replace_or_add_prop(item, "duration", duration)
+
             suppress_if_quiet("  %s" % cr.render(item), args)
 
 
@@ -976,13 +994,48 @@ def cmd_start(tl, args):
                 print(" ", cr.render(item))
                 return
             if "started" in item.properties:
-                print("Todo item has already been started on %s" % to_date(item.properties["started"]))
+                print("Todo item has already been started on %s" % from_date(item.properties["started"]))
                 print(" ", cr.render(item))
                 return
             now = datetime.datetime.now()
             tl.replace_or_add_prop(item, "started", from_date(now), now)
         
+
+def cmd_stop(tl, args):
+    """stops working on a todo item without setting it to 'done'.
     
+    :description: If a todo item is paused, the 'duration' property is 
+        updated and the 'started' property is removed.
+    
+    Required fields of :param:`args`:
+    * item: the index number or id of the todo item which should be stopped
+    """
+    with ColorRenderer() as cr:
+        item = tl.get_item_by_index(args.item)
+        if not item:
+            print("No item found with number or ID %s" % args.item)
+            return
+        if "started" not in item.properties:
+            print("Todo item has not been started yet")
+            return
+        start_time = item.properties["started"]
+        now = datetime.datetime.now()
+        time_delta = now - start_time
+        duration = 0
+        try:
+            # try to parse existing duration property
+            duration = int(item.properties.get("duration", 0))
+        except:
+            pass
+        # add delta time in minutes
+        duration += int(time_delta.total_seconds() / 60) 
+        # remove started property
+        tl.replace_or_add_prop(item, "started", None)
+        # update duration property
+        tl.replace_or_add_prop(item, "duration", duration)
+        suppress_if_quiet("You have worked %s minutes on:\n  %s" % (duration, cr.render(item)), args)
+        
+        
 # Aliases
 cmd_ls = cmd_list
 cmd_ed = cmd_edit

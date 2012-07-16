@@ -201,6 +201,9 @@ if __name__ == '__main__':
     
     parse_start = subparser.add_parser("start")
     parse_start.add_argument("item", type=str, nargs="?", help=get_doc_param(actions.cmd_start, "item"))
+
+    parse_start = subparser.add_parser("stop")
+    parse_start.add_argument("item", type=str, help=get_doc_param(actions.cmd_stop, "item"))
     
     parse_tasked = subparser.add_parser("tasked")
     parse_tasked.add_argument("initiator", type=to_unicode, nargs="?", help=get_doc_param(actions.cmd_tasked, "initiator"))

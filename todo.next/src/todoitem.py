@@ -148,6 +148,8 @@ class TodoItem(object):
         # remove "x " prefix
         if self.text.startswith("x "):
             self.text = self.text[2:]
+            # remove done property
+            self.replace_or_add_prop("done", None)
             self.dirty = True
     
     

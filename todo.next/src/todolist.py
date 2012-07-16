@@ -30,6 +30,7 @@ class TodoList(object):
         self.tids = {}
         self.dirty = False
         self.conf = ConfigBorg()
+        self.dependencies = {}
         
         if self.conf.id_support:
             # initialize randomizer for tid generation
@@ -45,9 +46,13 @@ class TodoList(object):
                 if item.tid:
                     if item.tid in self.tids:
                         # duplicate ID - what to do now?
+                        # TODO: log that as a warning
                         pass
                     else:
                         self.tids[item.tid] = item
+                    # TODO: resolve dependency (via blocks)
+                    #if "blockedby" in item.properties:
+                    #    self.dependencies[]
                 item.line_nr = line_nr
         # sort list
         self.sort_list()
@@ -159,6 +164,7 @@ class TodoList(object):
             counter += 1
         # we tried often enough and failed :(
         return "xxx"
+
 
     def add_item(self, item_str):
         """exposed add item method, adds a new todo item to the todo file and reindexes
@@ -324,11 +330,14 @@ class TodoList(object):
         
         :param item: the todo item to be removed
         :type item: :class:`TodoItem`
+        :return: the removed item
+        :rtype: :class:`TodoItem`
         """
         self.todolist.remove(item)
+        item.nr = None
         self.reindex()
         self.dirty = True
-        # TODO: return removed value?
+        return item
     
     
     def replace_item(self, item, new_item):
@@ -338,6 +347,8 @@ class TodoList(object):
         :type item: :class:`TodoItem`
         :param new_item: the new todo item to replace the old one
         :type new_item: :class:`TodoItem`
+        :return: the new item
+        :rtype: :class:`TodoItem`
         """
         # set to index and copy index number
         index = self.todolist.index(item)
@@ -347,7 +358,8 @@ class TodoList(object):
         new_item.line_nr = item.line_nr
         self.reindex()
         self.dirty = True
-        # TODO: return something?
+        return new_item
+        
         
     def sort_key_by(self, property_name, default):
         def inner_getter(item):
