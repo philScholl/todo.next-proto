@@ -619,6 +619,7 @@ def cmd_backup(tl, args):
     """backups the current todo file to a timestamped file
     
     Required fields of :param:`args`:
+    * filename: the name of the backup file [optional]
     """
     template = os.path.basename(conf.todo_file)
     filename = datetime.datetime.now().strftime("%Y-%m-%d_%H%M_" + template)

@@ -18,6 +18,9 @@ import ConfigParser
 class AliasedSubParsersAction(argparse._SubParsersAction):
     """subparser action allowing aliases for :mod:`argparse` in < Python 3.2
     
+    Besides that, this subparser and its arguments try to autogenerate the help
+    string based on the docstrings of the ``dest`` command function.  
+    
     .. see:: https://gist.github.com/471779 (credit to sampsyo)
     
     """
@@ -36,14 +39,36 @@ class AliasedSubParsersAction(argparse._SubParsersAction):
             del kwargs['aliases']
         else:
             aliases = []
-
+        
+        # create help and description strings for parser
         if "help" not in kwargs:
             kwargs["help"] = get_doc_help(getattr(actions, "cmd_%s" % name))
         if "description" not in kwargs:
             kwargs["description"] = get_doc_description(getattr(actions, "cmd_%s" % name))
-            
 
         parser = super(AliasedSubParsersAction, self).add_parser(name, **kwargs)
+        # save back the add_argument method
+        parser._add_argument = parser.add_argument
+        
+        def add_argument_with_autohelp(*pname, **kwargs):
+            """ helper function to replace add_argument
+            
+            Two cases: pname is either a string or two strings ("-"-commands).
+            """
+            if "help" not in kwargs:
+                if len(pname) == 1:
+                    norm_name = pname[0]
+                else:
+                    norm_name = pname[1].lstrip("-")
+                kwargs["help"] = get_doc_param(getattr(actions, "cmd_%s" % name), norm_name)
+            if len(pname) == 1:
+                parser._add_argument(pname[0], **kwargs)
+            else:
+                parser._add_argument(pname[0], pname[1], **kwargs)
+            
+        # replace add_argument method
+        parser.add_argument = add_argument_with_autohelp
+        
         # Make the aliases work.
         for alias in aliases:
             self._name_parser_map[alias] = parser
@@ -55,8 +80,12 @@ class AliasedSubParsersAction(argparse._SubParsersAction):
             self._choices_actions.append(pseudo_action)
         return parser
 
+
 def to_unicode(string):
+    """ decodes a string in the file system's encoding to unicode
+    """
     return string.decode(sys.getfilesystemencoding())
+
 
 def create_config_wizard():
     config = ConfigParser.ConfigParser()
@@ -147,109 +176,109 @@ if __name__ == '__main__':
     subparser = parser.add_subparsers(title="commands", help = "", dest = "command")
     
     parse_add = subparser.add_parser("add")
-    parse_add.add_argument("text", type=to_unicode, nargs="*", help=get_doc_param(actions.cmd_add, "text"))
+    parse_add.add_argument("text", type=to_unicode, nargs="*")
     
     parse_attach = subparser.add_parser("attach")
-    parse_attach.add_argument("item", type=str, help=get_doc_param(actions.cmd_attach, "item"))
-    parse_attach.add_argument("location", type=str, help=get_doc_param(actions.cmd_attach, "location"))
-
-    parse_block= subparser.add_parser("block")
-    parse_block.add_argument("item", type=str, help=get_doc_param(actions.cmd_block, "item"))
-    parse_block.add_argument("blocked", type=str, help=get_doc_param(actions.cmd_block, "blocked"))
-
-    parse_unblock= subparser.add_parser("unblock")
-    parse_unblock.add_argument("item", type=str, help=get_doc_param(actions.cmd_unblock, "item"))
-    parse_unblock.add_argument("blocked", type=str, help=get_doc_param(actions.cmd_unblock, "blocked"))
-
+    parse_attach.add_argument("item", type=str)
+    parse_attach.add_argument("location", type=str)
+    
+    if cconf.id_support:
+        parse_block= subparser.add_parser("block")
+        parse_block.add_argument("item", type=str)
+        parse_block.add_argument("blocked", type=str)
+    
+        parse_unblock= subparser.add_parser("unblock")
+        parse_unblock.add_argument("item", type=str)
+        parse_unblock.add_argument("blocked", type=str)
 
     parse_call = subparser.add_parser("call")
-    parse_call.add_argument("item", type=str, help=get_doc_param(actions.cmd_call, "item"))
+    parse_call.add_argument("item", type=str)
         
     parse_delay = subparser.add_parser("delay")
-    parse_delay.add_argument("item", type=str, nargs="?", help=get_doc_param(actions.cmd_delay, "item"))
-    parse_delay.add_argument("date", type=str, nargs="?", help=get_doc_param(actions.cmd_delay, "date"))
-    parse_delay.add_argument("-f", "--force", action="store_true", help=get_doc_param(actions.cmd_delay, "force"))
+    parse_delay.add_argument("item", type=str, nargs="?")
+    parse_delay.add_argument("date", type=str, nargs="?")
+    parse_delay.add_argument("-f", "--force", action="store_true")
     
     parse_delegated = subparser.add_parser("delegated")
-    parse_delegated.add_argument("delegate", type=to_unicode, nargs="?", help=get_doc_param(actions.cmd_delegated, "delegate"))
-    parse_delegated.add_argument("-a", "--all", action="store_true", help=get_doc_param(actions.cmd_delegated, "all"))
+    parse_delegated.add_argument("delegate", type=to_unicode, nargs="?")
+    parse_delegated.add_argument("-a", "--all", action="store_true")
     
     parse_detach = subparser.add_parser("detach")
-    parse_detach.add_argument("item", type=str, help=get_doc_param(actions.cmd_detach, "item"))
+    parse_detach.add_argument("item", type=str)
 
     parse_done = subparser.add_parser("done", aliases=("x",))
-    parse_done.add_argument("items", type=str, nargs="+", help=get_doc_param(actions.cmd_done, "items"))
+    parse_done.add_argument("items", type=str, nargs="+")
 
     parse_edit = subparser.add_parser("edit", aliases=("ed",))
-    parse_edit.add_argument("item", type=str, nargs="?", help=get_doc_param(actions.cmd_edit, "item"))
+    parse_edit.add_argument("item", type=str, nargs="?")
 
     parse_list = subparser.add_parser("list", aliases=("ls",))
-    parse_list.add_argument("search_string", type=to_unicode, nargs="?", help=get_doc_param(actions.cmd_list, "search_string"))
-    parse_list.add_argument("-a", "--all", action="store_true", help=get_doc_param(actions.cmd_list, "all"))
-    parse_list.add_argument("-r", "--regex", action="store_true", help=get_doc_param(actions.cmd_list, "regex"))
-    parse_list.add_argument("-c", "--ci", action="store_true", help=get_doc_param(actions.cmd_list, "ci"))
+    parse_list.add_argument("search_string", type=to_unicode, nargs="?")
+    parse_list.add_argument("-a", "--all", action="store_true")
+    parse_list.add_argument("-r", "--regex", action="store_true")
+    parse_list.add_argument("-c", "--ci", action="store_true")
 
     parse_lsa = subparser.add_parser("lsa")
-    parse_lsa.add_argument("search_string", type=to_unicode, nargs="?", help=get_doc_param(actions.cmd_lsa, "search_string"))
-    parse_lsa.add_argument("-r", "--regex", action="store_true", help=get_doc_param(actions.cmd_lsa, "regex"))
-    parse_lsa.add_argument("-c", "--ci", action="store_true", help=get_doc_param(actions.cmd_lsa, "ci"))
+    parse_lsa.add_argument("search_string", type=to_unicode, nargs="?")
+    parse_lsa.add_argument("-r", "--regex", action="store_true")
+    parse_lsa.add_argument("-c", "--ci", action="store_true")
     
     parse_prio = subparser.add_parser("prio")
-    parse_prio.add_argument("items", type=str, nargs="+", help=get_doc_param(actions.cmd_prio, "items"))
-    parse_prio.add_argument("priority", type=str, help=get_doc_param(actions.cmd_prio, "priority"))
+    parse_prio.add_argument("items", type=str, nargs="+")
+    parse_prio.add_argument("priority", type=str)
     
     parse_del = subparser.add_parser("remove", aliases=("rm", "del"))
-    parse_del.add_argument("items", type=str, nargs="+", help=get_doc_param(actions.cmd_remove, "items"))
-    parse_del.add_argument("-f", "--force", action="store_true", help=get_doc_param(actions.cmd_remove, "force"))
+    parse_del.add_argument("items", type=str, nargs="+")
+    parse_del.add_argument("-f", "--force", action="store_true")
 
     parse_reopen = subparser.add_parser("reopen")
-    parse_reopen.add_argument("items", type=str, nargs="+", help=get_doc_param(actions.cmd_reopen, "items"))
+    parse_reopen.add_argument("items", type=str, nargs="+")
 
     parse_repeat = subparser.add_parser("repeat")
-    parse_repeat.add_argument("item", type=str, help=get_doc_param(actions.cmd_repeat, "item"))
-    parse_repeat.add_argument("date", type=str, nargs="?", help=get_doc_param(actions.cmd_repeat, "date"))
+    parse_repeat.add_argument("item", type=str)
+    parse_repeat.add_argument("date", type=str, nargs="?")
     
     parse_start = subparser.add_parser("start")
-    parse_start.add_argument("item", type=str, nargs="?", help=get_doc_param(actions.cmd_start, "item"))
+    parse_start.add_argument("item", type=str, nargs="?")
 
     parse_start = subparser.add_parser("stop")
-    parse_start.add_argument("item", type=str, help=get_doc_param(actions.cmd_stop, "item"))
+    parse_start.add_argument("item", type=str)
     
     parse_tasked = subparser.add_parser("tasked")
-    parse_tasked.add_argument("initiator", type=to_unicode, nargs="?", help=get_doc_param(actions.cmd_tasked, "initiator"))
-    parse_tasked.add_argument("-a", "--all", action="store_true", help=get_doc_param(actions.cmd_tasked, "all"))
+    parse_tasked.add_argument("initiator", type=to_unicode, nargs="?")
+    parse_tasked.add_argument("-a", "--all", action="store_true")
     
     # -------------------------------------------------
     # Overview functionality
     # -------------------------------------------------
 
     parse_agenda = subparser.add_parser("agenda", aliases=("ag",))
-    parse_agenda.add_argument("date", type=str, nargs="?", help=get_doc_param(actions.cmd_agenda, "date"))
+    parse_agenda.add_argument("date", type=str, nargs="?")
 
     parse_context = subparser.add_parser("context", aliases=("ctx",))
-    parse_context.add_argument("name", type=str, help=get_doc_param(actions.cmd_context, "name"), nargs="?")
-    parse_context.add_argument("-a", "--all", action="store_true", help=get_doc_param(actions.cmd_context, "all"))
-    parse_context.add_argument("-c", "--ci", action="store_true", help=get_doc_param(actions.cmd_context, "ci"))
+    parse_context.add_argument("name", type=str, nargs="?")
+    parse_context.add_argument("-a", "--all", action="store_true")
+    parse_context.add_argument("-c", "--ci", action="store_true")
     
     parse_mark = subparser.add_parser("mark")
-    parse_mark.add_argument("marker", type=str, nargs="?", help=get_doc_param(actions.cmd_mark, "marker"))
-    parse_mark.add_argument("-a", "--all", action="store_true", help=get_doc_param(actions.cmd_mark, "all"))
+    parse_mark.add_argument("marker", type=str, nargs="?")
+    parse_mark.add_argument("-a", "--all", action="store_true")
     
     parse_overdue = subparser.add_parser("overdue", aliases=("over", "od"))
     
     parse_project = subparser.add_parser("project", aliases=("pr",))
-    parse_project.add_argument("name", type=str, nargs="?", help=get_doc_param(actions.cmd_project, "name"))
-    parse_project.add_argument("-a", "--all", action="store_true", help=get_doc_param(actions.cmd_project, "all"))
-    parse_project.add_argument("-c", "--ci", action="store_true", help=get_doc_param(actions.cmd_project, "ci"))
+    parse_project.add_argument("name", type=str, nargs="?")
+    parse_project.add_argument("-a", "--all", action="store_true")
+    parse_project.add_argument("-c", "--ci", action="store_true")
     
     parse_report = subparser.add_parser("report", aliases=("rep", ))
-    parse_report.add_argument("from_date", type=str, nargs="?", help=get_doc_param(actions.cmd_report, "from_date"))
-    parse_report.add_argument("to_date", type=str, nargs="?", help=get_doc_param(actions.cmd_report, "to_date"))
+    parse_report.add_argument("from_date", type=str, nargs="?")
+    parse_report.add_argument("to_date", type=str, nargs="?")
     
     parse_search = subparser.add_parser("search")
-    parse_search.add_argument("search_string", type=to_unicode, help=get_doc_param(actions.cmd_search, "search_string"))
-    parse_search.add_argument("-r", "--regex", action="store_true", help=get_doc_param(actions.cmd_search, "regex"))
-    parse_search.add_argument("-c", "--ci", action="store_true", help=get_doc_param(actions.cmd_search, "ci"))
+    parse_search.add_argument("search_string", type=to_unicode)
+    parse_search.add_argument("-r", "--regex", action="store_true")
+    parse_search.add_argument("-c", "--ci", action="store_true")
 
     parse_stats = subparser.add_parser("stats")
 
@@ -258,10 +287,10 @@ if __name__ == '__main__':
     # -------------------------------------------------
     
     parse_archive = subparser.add_parser("archive")
-    #parse_archive.add_argument("to_file", type=str, help="the file where all archived todo items are appended", nargs="?")
+    #parse_archive.add_argument("to_file", type=str, nargs="?")
 
     parse_backup = subparser.add_parser("backup")
-    parse_backup.add_argument("filename", type=str, help="the name of the backup file [optional]", nargs="?")
+    parse_backup.add_argument("filename", type=str, nargs="?")
     
     parse_check = subparser.add_parser("check")
     
