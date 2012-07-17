@@ -8,8 +8,10 @@ Provides simple date transformations and date parsing for todo.next application.
 .. moduleauthor:: Philipp Scholl <Phil@>
 """
 from __future__ import print_function
+
+from config import ConfigBorg
+
 import datetime, re, calendar
-from borg import ConfigBorg
 
 # if dateutil is installed, this makes everything a lot easier
 USE_DATEUTIL = False

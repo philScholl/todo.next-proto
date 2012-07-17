@@ -8,9 +8,10 @@
 """
 from __future__ import print_function
 import actions
-from borg import ConfigBorg
+from config import ConfigBorg
 from todolist import TodoList
 from cli_helpers import get_doc_help, get_doc_param, get_doc_description, get_colors, confirm_action
+
 import argparse, os, codecs, sys
 import ConfigParser
 

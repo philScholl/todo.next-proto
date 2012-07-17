@@ -9,11 +9,13 @@ from todoitem import TodoItem
 
 import datetime, codecs, hashlib, random, math, sys
 from itertools import groupby
-from borg import ConfigBorg
+from config import ConfigBorg
 
 ALPHABET = "abcdefghijklmnopqrstuvwxyz"
 BASE = len(ALPHABET)
 MAXLEN = 3
+
+conf = ConfigBorg()
 
 class TodoList(object):
     """class representing a todo list that's stored in a ``todo.next`` file.
@@ -29,10 +31,9 @@ class TodoList(object):
         self.todolist = []
         self.tids = {}
         self.dirty = False
-        self.conf = ConfigBorg()
         self.dependencies = {}
         
-        if self.conf.id_support:
+        if conf.id_support:
             # initialize randomizer for tid generation
             random.seed()
         # read todo file items
@@ -95,10 +96,10 @@ class TodoList(object):
         """writes the todo items back to the file
         """
         with codecs.open(self.todofile, "w", "utf-8") as fp:
-            if self.conf.sort and not self.sorted:
+            if conf.sort and not self.sorted:
                 # sort list according to own rules
                 self.sort_list()
-            elif not self.conf.sort:
+            elif not conf.sort:
                 # sort list according to original order (line number in todo.txt file)
                 self.todolist.sort(key=lambda x: x.line_nr if x.line_nr != None else sys.maxint)
             for item in self.todolist:
@@ -181,12 +182,12 @@ class TodoList(object):
         now_str = from_date(now)
         if item.is_report:
             # in case of report item, we need to store the "done" date for later sorting
-            item.replace_or_add_prop("done", now_str, now)
+            item.replace_or_add_prop(conf.DONE, now_str, now)
         else:
-            item.replace_or_add_prop("created", now_str, now)
+            item.replace_or_add_prop(conf.CREATED, now_str, now)
         # if item doesn't have an tid assigned, do it here automatically
-        if self.conf.id_support and not item.tid:
-            item.replace_or_add_prop("id", self.create_tid(item))
+        if conf.id_support and not item.tid:
+            item.replace_or_add_prop(conf.ID, self.create_tid(item))
         # the new item is sorted into the list
         self.reindex()
         # something has changed
@@ -208,7 +209,7 @@ class TodoList(object):
             warnings = item.check(False)
             if warnings:
                 yield (item, warnings)
-        if self.conf.id_support:
+        if conf.id_support:
             # check for duplicate tids
             for key, group in groupby(tids, key=lambda x: x[0]):
                 group = [item for _, item in group]
@@ -233,6 +234,8 @@ class TodoList(object):
         :param real_prop_val: an object representation of the property value, e.g. a 
             :class:`datetime.datetime` object representing the date of the value that
             the properties field will contain. If not set, the string value is taken.
+            Special semantics: If ``new_prop_val`` is ``None``, this acts as a 
+            selector, removing only the parameter that has this value.
         :type real_prop_val: any
         :returns: the altered todo item
         :rtype: :class:`TodoItem` 
@@ -295,7 +298,7 @@ class TodoList(object):
         if not self.sorted:
             self.sort_list()
         try:
-            if self.conf.id_support and item_nr in self.tids:
+            if conf.id_support and item_nr in self.tids:
                 item = self.tids[item_nr]
                 item.nr = self.todolist.index(item)
             else:

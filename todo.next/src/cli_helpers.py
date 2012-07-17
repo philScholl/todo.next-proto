@@ -11,7 +11,7 @@ version of todo.next.
 from __future__ import print_function
 
 from date_trans import shorten_date
-from borg import ConfigBorg
+from config import ConfigBorg
 
 from colorama import init, deinit, Fore, Back, Style
 import re, tempfile, subprocess, os, codecs, time, urlparse
@@ -251,11 +251,12 @@ class ColorRenderer(object):
         
         for prop in item.properties:
             if prop in self.conf.shorten:
-                if prop == "file":
+                if prop == self.conf.FILE:
                     # shorten file name
-                    file_name = item.properties[prop]
-                    text = text.replace("file:%s" % file_name, "[%s]" % os.path.basename(file_name))
-                elif prop in ("due", "done", "created", "started"):
+                    file_names = item.properties[prop]
+                    for file_name in file_names:
+                        text = text.replace("file:%s" % file_name, "[%s]" % os.path.basename(file_name))
+                elif prop in (self.conf.DUE, self.conf.DONE, self.conf.CREATED, self.conf.STARTED):
                     # shorten date properties
                     text = get_regex_for_replacing_prop(prop).sub(
                         "%s:%s" % (prop, shorten_date(item.properties[prop])), text) 
@@ -300,7 +301,7 @@ class ColorRenderer(object):
             prefix = "[" + self.wrap_id(item.tid) + "] "
         if self.conf.id_support and "blockedby" in item.properties:
             prefix = "<%s> %s" % (self.wrap_block(item.properties["blockedby"]), prefix)
-        if "started" in item.properties and not item.done:
+        if self.conf.STARTED in item.properties and not item.done:
             prefix = "%s %s" % (self.wrap_block("*****"), prefix)    
             
         if item.is_report:

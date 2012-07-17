@@ -10,13 +10,16 @@ Provides functionality for a single todo item
 from __future__ import print_function
 import parsers
 from date_trans import from_date, to_date, is_same_day
+from config import ConfigBorg
+
 import datetime, re, os, sys
+
+conf = ConfigBorg()
 
 class TodoItem(object):
     
-    date_properties = ["due", "done", "created", "started"]
-    
     def __init__(self, item_text):
+        
         self.text = item_text
         self.properties = {}
         self.urls = []
@@ -51,34 +54,34 @@ class TodoItem(object):
 
     
     def set_due_date(self, date_or_str):
-        self.set_date("due", date_or_str)
+        self.set_date(conf.DUE, date_or_str)
 
     
     def get_due_date(self):
-        return self.get_date("due")
+        return self.get_date(conf.DUE)
     
     
     def set_done_date(self, date_or_str):
-        self.set_date("done", date_or_str)
+        self.set_date(conf.DONE, date_or_str)
         
     
     def get_done_date(self):
-        return self.get_date("done")
+        return self.get_date(conf.DONE)
     
     
     def set_created_date(self, date_or_str):
-        self.set_date("created", date_or_str)
+        self.set_date(conf.CREATED, date_or_str)
     
     
     def get_created_date(self):
-        return self.get_date("created")
+        return self.get_date(conf.CREATED)
     
     
     def get_id(self):
-        return self.properties.get("id", None)
+        return self.properties.get(conf.ID, None)
     
     def set_id(self, id_str):
-        self.replace_or_add_prop("id", id_str)
+        self.replace_or_add_prop(conf.ID, id_str)
     
     due_date = property(fget = get_due_date, fset = set_due_date)
     done_date = property(fget = get_done_date, fset = set_done_date)
@@ -125,13 +128,14 @@ class TodoItem(object):
         """
         warnings = []
         # check for availability of files
-        if self.properties.get("file", None):
-            fn = self.properties["file"]
-            if not os.path.exists(fn):
-                wtext = "WARNING: File '%s' does not exist (anymore)." % fn
-                warnings.append(wtext)
+        if self.properties.get(conf.FILE, None):
+            file_names = self.properties[conf.FILE]
+            for fn in file_names:
+                if not os.path.exists(fn):
+                    wtext = "WARNING: File '%s' does not exist (anymore)." % fn
+                    warnings.append(wtext)
         for prop in self.properties:
-            if prop in self.date_properties:
+            if prop in conf.DATE_PROPS:
                 if isinstance(self.properties[prop], basestring):
                     wtext = "WARNING: property %s:%s is not a valid date." % (prop, self.properties[prop])
                     warnings.append(wtext)
@@ -146,10 +150,10 @@ class TodoItem(object):
         """
         self.done = False
         # remove "x " prefix
-        if self.text.startswith("x "):
+        if self.text.startswith(conf.DONE_PREFIX):
             self.text = self.text[2:]
             # remove done property
-            self.replace_or_add_prop("done", None)
+            self.replace_or_add_prop(conf.DONE, None)
             self.dirty = True
     
     
@@ -164,10 +168,10 @@ class TodoItem(object):
         # if necessary, create properties
         now = datetime.datetime.now()
         # add marker "x " at beginning
-        if not self.text.startswith("x "):
-            self.text = "x " + self.text
+        if not self.text.startswith(conf.DONE_PREFIX):
+            self.text = conf.DONE_PREFIX + self.text
         # replace ``done`` properties with current value (and add datetime object for properties)
-        self.replace_or_add_prop("done", from_date(now), now)
+        self.replace_or_add_prop(conf.DONE, from_date(now), now)
 
 
     def replace_or_add_prop(self, property_name, new_property_value, real_property_value = None):
@@ -185,6 +189,8 @@ class TodoItem(object):
         :param real_property_value: an object representation of the property value, e.g. a 
             :class:`datetime.datetime` object representing the date of the value that
             the properties field will contain. If not set, the string value is taken.
+            Special semantics: If ``new_property_value`` is ``None``, this acts as a 
+            selector, removing only the parameter that has this value. 
         :type real_property_value: any
         :returns: the altered todo item
         :rtype: :class:`TodoItem` 
@@ -196,24 +202,45 @@ class TodoItem(object):
         matches = re_replace_prop.findall(self.text)
         
         if not new_property_value:
-            # remove the property
-            if self.properties.get(property_name, None) != None:
-                del self.properties[property_name]
-            # remove all properties with that identifier
-            for match in matches:
-                self.text = self.text.replace(match, "")
+            # TODO: case new_prop_val == None, prop is MULTI_PROP and real is set... remove only one part
+            if property_name in conf.MULTI_PROPS and real_property_value:
+                if property_name in self.properties:
+                    # remove property that has a certain value
+                    self.properties[property_name].remove(real_property_value)
+                    if not self.properties[property_name]:
+                        # if the property is now empty
+                        del self.properties[property_name]
+                    # remove from text
+                    self.text = self.text.replace("%s:%s" % (property_name, real_property_value), "")
+            else:
+                # remove the property
+                if property_name in self.properties:
+                    del self.properties[property_name]
+                # remove all properties with that identifier
+                for match in matches:
+                    self.text = self.text.replace(match, "")
             # replacing may leave multiple adjacent whitespaces - remove those
             self.text = " ".join(self.text.split())
         else:
-            if real_property_value:
-                self.properties[property_name] = real_property_value
-            else:
-                self.properties[property_name] = new_property_value
+            # if multi prop, initialize to empty list
+            if property_name in conf.MULTI_PROPS:
+                if property_name not in self.properties:
+                    self.properties[property_name] = []
             
-            if len(matches) > 0:
+            target_value = new_property_value
+            if real_property_value:
+                target_value = real_property_value
+            
+            if property_name in conf.MULTI_PROPS:
+                self.properties[property_name].append(target_value)
+            else:
+                self.properties[property_name] = target_value
+            
+            # depending on whether it is a multi prop
+            if len(matches) > 0 and property_name not in conf.MULTI_PROPS:
                 # replacing a property: only replace the first occurrence
                 self.text = self.text.replace(matches[0], "%s:%s" % (property_name, new_property_value), 1)
-                # and remove all further occurrences
+                # and remove all further occurrences (as it is not a multi prop)
                 for match in matches[1:]:
                     self.text = self.text.replace(match, "")
             else:
@@ -242,7 +269,7 @@ class TodoItem(object):
                 # we need to normalize this property name, make everything lowercase
                 re_normalize_prop = re.compile("(%s:)" % prop_name, re.IGNORECASE)
                 self.text = re_normalize_prop.sub("%s:" % prop_name, self.text)
-            if prop_name in self.date_properties:
+            if prop_name in conf.DATE_PROPS:
                 # replace all date props with a "beautified" date string
                 repl_date = to_date(props[prop_name])
                 if repl_date:

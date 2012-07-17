@@ -11,13 +11,15 @@ from __future__ import print_function
 from cli_helpers import ColorRenderer, get_editor_input, open_editor, confirm_action, suppress_if_quiet
 from date_trans import to_date, is_same_day, from_date
 from parsers import re_urls
-from borg import ConfigBorg
+from config import ConfigBorg
+from todoitem import TodoItem
+from todolist import TodoList
 
 import collections, datetime, re, os, glob
 from itertools import groupby
 import webbrowser, codecs
-from todoitem import TodoItem
-from todolist import TodoList
+
+conf = ConfigBorg()
 
 # regex for detecting priority argument in CLI
 re_prio = re.compile("[xA-Z+-]", re.UNICODE)
@@ -126,21 +128,21 @@ def cmd_done(tl, args):
         for item in tl.get_items_by_index_list(args.items):
             tl.set_to_done(item)
             # if started property is set, remove it and update duration property
-            if "started" in item.properties:
-                start_time = item.properties["started"]
+            if conf.STARTED in item.properties:
+                start_time = item.properties[conf.STARTED]
                 time_delta = now - start_time
                 duration = 0
                 try:
                     # try to parse existing duration property
-                    duration = int(item.properties.get("duration", 0))
+                    duration = int(item.properties.get(conf.DURATION, 0))
                 except:
                     pass
                 # add delta time in minutes
                 duration += int(time_delta.total_seconds() / 60) 
                 # remove started property
-                tl.replace_or_add_prop(item, "started", None)
+                tl.replace_or_add_prop(item, conf.STARTED, None)
                 # update duration property
-                tl.replace_or_add_prop(item, "duration", duration)
+                tl.replace_or_add_prop(item, conf.DURATION, duration)
 
             suppress_if_quiet("  %s" % cr.render(item), args)
 
@@ -169,7 +171,6 @@ def cmd_edit(tl, args):
     * item: the index number of the item to edit
     """
     with ColorRenderer() as cr:
-        conf = ConfigBorg()
         if not args.item:
             open_editor(conf.todo_file)
             quit(0)
@@ -271,8 +272,6 @@ def cmd_report(tl, args):
     * to_date: either a date or a string like 'tomorrow' or '*'
     """
     with ColorRenderer() as cr:
-        # get configuration
-        conf = ConfigBorg()
         # default date used when no done date is specified
         na_date = datetime.datetime(1970, 1, 1)
         # check from and to date, make them datetime or None
@@ -413,7 +412,6 @@ def cmd_config(tl, args):
     
     Required fields of :param:`args`:
     """
-    conf = ConfigBorg()
     open_editor(conf.config_file)
 
 
@@ -513,25 +511,25 @@ def cmd_call(tl, args):
         nr = 0
         actions = {}
         for toopen in item.urls:
-            print("  [% 2d] Open web site %s" % (nr, toopen))
+            print("  [% 3d] Open web site %s" % (nr, toopen))
             actions[nr] = (webbrowser.open_new_tab, toopen)
             nr += 1
-        if item.properties.get("file", None):
-            file_name = item.properties["file"]
+        for file_name in item.properties.get(conf.FILE, []):
             if not os.path.exists(file_name):
                 print("  [xxx] File %s does not exist" % file_name)
             else:
-                print("  [% 2d] Open file %s with default editor" % (nr, file_name))
+                print("  [% 3d] Open file %s with default editor" % (nr, file_name))
                 actions[nr] = (os.startfile, file_name)
                 nr += 1
-        if item.properties.get("mailto", None):
-            email = item.properties["mailto"]
-            print("  [% 2d] Write a mail to %s with default mail program" % (nr, email))
+        for email in item.properties.get(conf.MAILTO, []):
+            print("  [% 3d] Write a mail to %s with default mail program" % (nr, email))
             actions[nr] = (os.startfile, "mailto:" + email)
+            nr += 1
+        # simple case: only one action available
         if len(actions) == 1:
             actions[0][0](actions[0][1])
         elif len(actions) > 1:
-            choice = raw_input("Please enter your choice (0-%d): " % len(actions)-1).strip()
+            choice = raw_input("Please enter your choice (0-%d): " % (len(actions)-1)).strip()
             try:
                 choice = int(choice)
             except:
@@ -540,7 +538,8 @@ def cmd_call(tl, args):
             if int(choice) in actions:
                 actions[choice][0](actions[choice][1])
         else:
-            print("No file / url / email found in task:")
+            # nothing available
+            print("No files / urls / email addresses found in task:")
             print(" ", cr.render(item))
 
 
@@ -726,14 +725,14 @@ def cmd_delay(tl, args):
                         (from_date(item.due_date), from_date(new_date))):
                         return
                 # do the actual replacement
-                tl.replace_or_add_prop(item, "due", from_date(new_date), new_date)
+                tl.replace_or_add_prop(item, conf.DUE, from_date(new_date), new_date)
         else:
             new_date = to_date(args.date)
             if not args.force:
                 print(" ", cr.render(item))
                 if not confirm_action("The preceding item has no due date set, set to %s (y/N)?" % from_date(new_date)):
                     return
-                tl.replace_or_add_prop(item, "due", from_date(new_date), new_date)
+                tl.replace_or_add_prop(item, conf.DUE, from_date(new_date), new_date)
         suppress_if_quiet("  %s" % cr.render(item), args)
 
 
@@ -826,7 +825,7 @@ def cmd_attach(tl, args):
             item.text += " %s" % args.location
             item.urls.append(args.location.strip())
             tl.dirty = True
-            tl.reindex() 
+            tl.reindex()
         else:
             # get path relative to todo file
             try:
@@ -838,13 +837,9 @@ def cmd_attach(tl, args):
             if not os.path.exists(path):
                 print("File path '%s' does not exist" % path)
                 quit(-1)
-
-            if item.properties.get("file", None):
-                print("A file is already attached to this item: %s" % item.properties["file"])
-                if not confirm_action("Do you want to replace this file reference with the file '%s' (y/N)" % path):
-                    quit(0)
+            
             suppress_if_quiet("Attaching file %s" % path, args)
-            tl.replace_or_add_prop(item, "file", path)
+            tl.replace_or_add_prop(item, conf.FILE, path)
             tl.reindex()
         suppress_if_quiet("  %s" % cr.render(item), args)
 
@@ -862,8 +857,8 @@ def cmd_detach(tl, args):
             return
         attmnt_list = []
         attmnt_list.extend(("url", url) for url in item.urls)
-        if item.properties.get("file", None):
-            attmnt_list.append(("file", item.properties["file"]))
+        for file_name in item.properties.get(conf.FILE, []):
+            attmnt_list.append((conf.FILE, file_name))
         if len(attmnt_list) == 0:
             print("This item has no file or URLs attached")
             quit(0)
@@ -883,8 +878,8 @@ def cmd_detach(tl, args):
             except:
                 print("Not a valid input")
                 quit(0)
-        if attmnt[0] == "file":
-            item = tl.replace_or_add_prop(item, "file", None)
+        if attmnt[0] == conf.FILE:
+            item = tl.replace_or_add_prop(item, conf.FILE, None, attmnt[1])
         else:
             item.text = " ".join(item.text.replace(attmnt[1], "").split())
         suppress_if_quiet("  %s" % cr.render(item), args)
@@ -920,7 +915,7 @@ def cmd_repeat(tl, args):
         item = tl.get_item_by_index(args.item)
         new_item = tl.add_item(item.text)
         item.set_to_done()
-        tl.replace_or_add_prop(new_item, "due", args.date, to_date(args.date))
+        tl.replace_or_add_prop(new_item, conf.DUE, args.date, to_date(args.date))
         suppress_if_quiet("Marked todo item as 'done' and reinserted:\n  %s" % cr.render(new_item), args)
         
 
@@ -981,8 +976,10 @@ def cmd_start(tl, args):
     * item: the index number or id of the todo item which is started
     """
     with ColorRenderer() as cr:
+        conf = ConfigBorg()
         if not args.item:
-            for item in tl.list_items(lambda x: True if "started" in x.properties and not (x.done or x.is_report) else False):
+            for item in tl.list_items(lambda x: True if conf.STARTED in x.properties 
+                    and not (x.done or x.is_report) else False):
                 print(" ", cr.render(item))
         else:
             item = tl.get_item_by_index(args.item)
@@ -993,12 +990,12 @@ def cmd_start(tl, args):
                 print("Todo item has already been set to 'done':")
                 print(" ", cr.render(item))
                 return
-            if "started" in item.properties:
-                print("Todo item has already been started on %s" % from_date(item.properties["started"]))
+            if conf.STARTED in item.properties:
+                print("Todo item has already been started on %s" % from_date(item.properties[conf.STARTED]))
                 print(" ", cr.render(item))
                 return
             now = datetime.datetime.now()
-            tl.replace_or_add_prop(item, "started", from_date(now), now)
+            tl.replace_or_add_prop(item, conf.STARTED, from_date(now), now)
         
 
 def cmd_stop(tl, args):
@@ -1011,28 +1008,29 @@ def cmd_stop(tl, args):
     * item: the index number or id of the todo item which should be stopped
     """
     with ColorRenderer() as cr:
+        conf = ConfigBorg()
         item = tl.get_item_by_index(args.item)
         if not item:
             print("No item found with number or ID %s" % args.item)
             return
-        if "started" not in item.properties:
+        if conf.STARTED not in item.properties:
             print("Todo item has not been started yet")
             return
-        start_time = item.properties["started"]
+        start_time = item.properties[conf.STARTED]
         now = datetime.datetime.now()
         time_delta = now - start_time
         duration = 0
         try:
             # try to parse existing duration property
-            duration = int(item.properties.get("duration", 0))
+            duration = int(item.properties.get(conf.DURATION, 0))
         except:
             pass
         # add delta time in minutes
         duration += int(time_delta.total_seconds() / 60) 
         # remove started property
-        tl.replace_or_add_prop(item, "started", None)
+        tl.replace_or_add_prop(item, conf.STARTED, None)
         # update duration property
-        tl.replace_or_add_prop(item, "duration", duration)
+        tl.replace_or_add_prop(item, conf.DURATION, duration)
         suppress_if_quiet("You have worked %s minutes on:\n  %s" % (duration, cr.render(item)), args)
         
         
