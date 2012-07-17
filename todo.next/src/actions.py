@@ -620,7 +620,6 @@ def cmd_backup(tl, args):
     
     Required fields of :param:`args`:
     """
-    conf = ConfigBorg()
     template = os.path.basename(conf.todo_file)
     filename = datetime.datetime.now().strftime("%Y-%m-%d_%H%M_" + template)
     # backup directory can be relative to todo file directory
@@ -657,7 +656,6 @@ def cmd_archive(tl, args):
     Required fields of :param:`args`:
     """
     with ColorRenderer() as cr:
-        conf = ConfigBorg()
         # base directory of todo file
         base_dir = os.path.dirname(conf.todo_file)
         
@@ -754,8 +752,6 @@ def cmd_search(tl, args):
     * ci: if given, the search string is interpreted as case insensitive
     """
     with ColorRenderer() as cr:
-        conf = ConfigBorg()
-        
         # case insensitivity
         if args.ci:
             flags = re.UNICODE | re.IGNORECASE
@@ -813,7 +809,6 @@ def cmd_attach(tl, args):
     * location: either a (relative) file name or a (fully qualified) URL
     """
     with ColorRenderer() as cr:
-        conf = ConfigBorg()
         item = tl.get_item_by_index(args.item)
         if not item:
             print("Could not find item '%s'" % args.item)
@@ -976,7 +971,6 @@ def cmd_start(tl, args):
     * item: the index number or id of the todo item which is started
     """
     with ColorRenderer() as cr:
-        conf = ConfigBorg()
         if not args.item:
             for item in tl.list_items(lambda x: True if conf.STARTED in x.properties 
                     and not (x.done or x.is_report) else False):
@@ -1008,7 +1002,6 @@ def cmd_stop(tl, args):
     * item: the index number or id of the todo item which should be stopped
     """
     with ColorRenderer() as cr:
-        conf = ConfigBorg()
         item = tl.get_item_by_index(args.item)
         if not item:
             print("No item found with number or ID %s" % args.item)
@@ -1033,7 +1026,59 @@ def cmd_stop(tl, args):
         tl.replace_or_add_prop(item, conf.DURATION, duration)
         suppress_if_quiet("You have worked %s minutes on:\n  %s" % (duration, cr.render(item)), args)
         
-        
+
+def cmd_block(tl, args):
+    """setting the first item as a pre-requisite to the second item
+    
+    :description: This allows to create dependencies between todo items. One item
+        can be set as a pre-requisite to another todo item. This command is only
+        usable with id support activated.
+    
+    Required fields of :param:`args`:
+    * item: the id of the todo item which is a pre-requisite
+    * blocked: the id of the todo item which should be blocked
+    """
+    with ColorRenderer() as cr:
+        if not conf.id_support:
+            print("ID support is deactivated. You cannot use this feature.")
+            return
+        item = tl.get_item_by_index(args.item)
+        blocked = tl.get_item_by_index(args.blocked)
+        if item.tid in blocked.properties.get(conf.BLOCKEDBY, []):
+            print("Todo item '%s' is already a pre-requisite of '%s'." % (item, blocked))
+            return
+        tl.replace_or_add_prop(blocked, conf.BLOCKEDBY, item.tid)
+        tl.clean_dependencies()
+        tl.reindex()
+        suppress_if_quiet("  %s" % cr.render(blocked), args)
+         
+
+def cmd_unblock(tl, args):
+    """unsetting the first item as a pre-requisite to the second item
+    
+    :description: This allows to remove dependencies between todo items. One item
+        can be removed as a pre-requisite from another todo item. This command is only
+        usable with id support activated.
+    
+    Required fields of :param:`args`:
+    * item: the id of the todo item which is a pre-requisite
+    * blocked: the id of the todo item which is blocked
+    """
+    with ColorRenderer() as cr:
+        if not conf.id_support:
+            print("ID support is deactivated. You cannot use this feature.")
+            return
+        item = tl.get_item_by_index(args.item)
+        blocked = tl.get_item_by_index(args.blocked)
+        if item.tid not in blocked.properties.get(conf.BLOCKEDBY, []):
+            print("Todo item '%s' is not a pre-requisite of '%s'." % (item, blocked))
+            return
+        tl.replace_or_add_prop(blocked, conf.BLOCKEDBY, None, item.tid)
+        tl.clean_dependencies()
+        tl.reindex()
+        suppress_if_quiet("  %s" % cr.render(blocked), args)
+
+
 # Aliases
 cmd_ls = cmd_list
 cmd_ed = cmd_edit

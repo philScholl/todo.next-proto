@@ -153,6 +153,15 @@ if __name__ == '__main__':
     parse_attach.add_argument("item", type=str, help=get_doc_param(actions.cmd_attach, "item"))
     parse_attach.add_argument("location", type=str, help=get_doc_param(actions.cmd_attach, "location"))
 
+    parse_block= subparser.add_parser("block")
+    parse_block.add_argument("item", type=str, help=get_doc_param(actions.cmd_block, "item"))
+    parse_block.add_argument("blocked", type=str, help=get_doc_param(actions.cmd_block, "blocked"))
+
+    parse_unblock= subparser.add_parser("unblock")
+    parse_unblock.add_argument("item", type=str, help=get_doc_param(actions.cmd_unblock, "item"))
+    parse_unblock.add_argument("blocked", type=str, help=get_doc_param(actions.cmd_unblock, "blocked"))
+
+
     parse_call = subparser.add_parser("call")
     parse_call.add_argument("item", type=str, help=get_doc_param(actions.cmd_call, "item"))
         

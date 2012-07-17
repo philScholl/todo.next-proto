@@ -51,10 +51,13 @@ class TodoList(object):
                         pass
                     else:
                         self.tids[item.tid] = item
-                    # TODO: resolve dependency (via blocks)
-                    #if "blockedby" in item.properties:
-                    #    self.dependencies[]
+                # build blockedby dependencies
+                if conf.id_support and conf.BLOCKEDBY in item.properties and item.tid and not (item.done or item.is_report):
+                    tids = item.properties[conf.BLOCKEDBY]
+                    self.dependencies[item.tid] = tids
+                # set line number in file
                 item.line_nr = line_nr
+        self.clean_dependencies()
         # sort list
         self.sort_list()
     
@@ -122,6 +125,27 @@ class TodoList(object):
         self.sorted = False
         return item
 
+
+    def clean_dependencies(self, done = None):
+        # an item has been marked as done or removed, remove as blockedby in dependency
+        if done and done.tid:
+            for item_id, deps in self.dependencies.items():
+                # if it has been found as a block for other items
+                if done.tid in deps:
+                    # update the dependencies
+                    self.dependencies[item_id].remove(done.tid)
+        # check dependencies for non-existing blocks
+        for item_id, deps in self.dependencies.items():
+            for tid in deps:
+                # get item
+                item = self.get_item_by_index(tid)
+                if tid not in self.tids or item.done:
+                    # blocked item is not existing anymore
+                    # print("ID %s blocks %s but is not existing anymore" % (tid, item_id))
+                    item = self.tids[item_id]
+                    self.replace_or_add_prop(item, conf.BLOCKEDBY, None, tid)
+                    self.dirty = True
+
     
     def create_tid(self, item, maxlen = MAXLEN):
         """creates a random 4-letter tid
@@ -187,7 +211,12 @@ class TodoList(object):
             item.replace_or_add_prop(conf.CREATED, now_str, now)
         # if item doesn't have an tid assigned, do it here automatically
         if conf.id_support and not item.tid:
-            item.replace_or_add_prop(conf.ID, self.create_tid(item))
+            item_id = self.create_tid(item)
+            item.replace_or_add_prop(conf.ID, item_id)
+            self.tids[item_id] = item
+        # add to dependencies
+        if conf.id_support and item.tid and conf.BLOCKEDBY in item.properties:
+            self.dependencies[item.tid] = item.properties[conf.BLOCKEDBY]
         # the new item is sorted into the list
         self.reindex()
         # something has changed
@@ -260,6 +289,8 @@ class TodoList(object):
         if item.is_report:
             return item
         item.set_to_done()
+        # clean blockedby dependencies
+        self.clean_dependencies(done=item)
         # reindex the list, as the order may have changed
         self.reindex()
         self.dirty = True
@@ -338,6 +369,7 @@ class TodoList(object):
         """
         self.todolist.remove(item)
         item.nr = None
+        self.clean_dependencies(item)
         self.reindex()
         self.dirty = True
         return item
@@ -359,6 +391,7 @@ class TodoList(object):
         self.todolist[index] = new_item
         # line number
         new_item.line_nr = item.line_nr
+        self.clean_dependencies()
         self.reindex()
         self.dirty = True
         return new_item
