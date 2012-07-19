@@ -12,7 +12,7 @@ from config import ConfigBorg
 from todolist import TodoList
 from cli_helpers import get_doc_help, get_doc_param, get_doc_description, get_colors, confirm_action
 
-import argparse, os, codecs, sys
+import argparse, os, codecs, sys, logging
 import ConfigParser
 
 class AliasedSubParsersAction(argparse._SubParsersAction):
@@ -28,7 +28,7 @@ class AliasedSubParsersAction(argparse._SubParsersAction):
         def __init__(self, name, aliases, cmd_help):
             dest = name
             if aliases:
-                dest += ' (%s)' % ','.join(aliases)
+                dest += " ({aliases})".format(aliases = ",".join(aliases))
             sup = super(AliasedSubParsersAction._AliasedPseudoAction, self)
             sup.__init__(option_strings=[], dest=dest, help=cmd_help)
             
@@ -42,9 +42,9 @@ class AliasedSubParsersAction(argparse._SubParsersAction):
         
         # create help and description strings for parser
         if "help" not in kwargs:
-            kwargs["help"] = get_doc_help(getattr(actions, "cmd_%s" % name))
+            kwargs["help"] = get_doc_help(getattr(actions, "cmd_{cmd_name}".format(cmd_name = name)))
         if "description" not in kwargs:
-            kwargs["description"] = get_doc_description(getattr(actions, "cmd_%s" % name))
+            kwargs["description"] = get_doc_description(getattr(actions, "cmd_{cmd_name}".format(cmd_name = name)))
 
         parser = super(AliasedSubParsersAction, self).add_parser(name, **kwargs)
         # save back the add_argument method
@@ -60,7 +60,7 @@ class AliasedSubParsersAction(argparse._SubParsersAction):
                     norm_name = pname[0]
                 else:
                     norm_name = pname[1].lstrip("-")
-                kwargs["help"] = get_doc_param(getattr(actions, "cmd_%s" % name), norm_name)
+                kwargs["help"] = get_doc_param(getattr(actions, "cmd_{cmd_name}".format(cmd_name = name)), norm_name)
             if len(pname) == 1:
                 parser._add_argument(pname[0], **kwargs)
             else:
@@ -100,20 +100,20 @@ def create_config_wizard():
         todo_filename = sys.argv[1]
     todo_filename = os.path.abspath(todo_filename)
     # ask for confirmation if the file should be created
-    if not confirm_action("Do you want to create your todo file with the standard name '%s' (y/N)?" % todo_filename):
+    if not confirm_action("Do you want to create your todo file with the standard name '{fn}' (y/N)?".format(fn = todo_filename)):
         # choose an own name
         if not confirm_action("Do you want to choose another file name (y/N)?"):
             return None
         todo_filename = os.path.abspath(raw_input("Please enter the path/filename of your todo file: ").strip())
     if os.path.exists(todo_filename):
-        print("* Todo file %s already exists..." % todo_filename)
+        print("* Todo file {fn} already exists...".format(fn = todo_filename))
     else:
         # create a new todo file
-        print("* Creating todo file %s" % todo_filename)
+        print("* Creating todo file {fn}".format(fn = todo_filename))
         with codecs.open(todo_filename, "w", "utf-8") as fp:
             fp.write("(A) Check out https://github.com/philScholl/todo.next-proto")
     # copy the config template file and change the todo file location
-    print("* Creating a new config file at '%s'" % config_file)
+    print("* Creating a new config file at '{fn}'".format(fn = config_file))
     with codecs.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.template"), "r", "utf-8") as fromfp:
         config.readfp(fromfp)
         config.set("todo", "todofile", todo_filename)
@@ -126,6 +126,12 @@ def create_config_wizard():
 
 
 if __name__ == '__main__':
+    logger = logging.getLogger("todonext")
+    logger.setLevel(logging.DEBUG)
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
+    logger.addHandler(handler)
+
     # look for configuration file
     config_file = os.path.join(os.path.expanduser("~"), ".todonext.config")
     if os.path.exists(config_file):
@@ -156,7 +162,7 @@ if __name__ == '__main__':
         cconf.archive_unsorted_filename = config.get("archive", "archive_unsorted_filename")
         cconf.archive_filename_scheme = config.get("archive", "archive_filename_scheme")
     except ConfigParser.Error, ex:
-        print("Your configuration file seems to be incorrect. Please check %s." % config_file)
+        print("Your configuration file seems to be incorrect. Please check '{fn}'.".format(fn = config_file))
         print(ex)
         quit(-1)
     
@@ -294,8 +300,6 @@ if __name__ == '__main__':
     
     parse_check = subparser.add_parser("check")
     
-    #parse_clean = subparser.add_parser("clean")
-    
     parse_config = subparser.add_parser("config")
     
     
@@ -321,12 +325,7 @@ if __name__ == '__main__':
                 # TODO: log error
                 to_col = ""
         setattr(cconf, color, to_col)
-    
-#    # set additional data that could be important for actions
-#    args.config = config
-#    args.config_file = config_file
-#    args.todo_file = todo_filename
-    
+        
     with TodoList(todo_filename) as tl:
         try:
             # call the respective command

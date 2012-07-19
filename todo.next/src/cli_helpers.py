@@ -21,7 +21,7 @@ re_docstring_param = re.compile("^\s*\*(.+?)\:(.+?)$", re.UNICODE | re.MULTILINE
 # regex for finding description
 re_docstring_desc = re.compile("^\s*\:description\:(.+?)^\s*$", re.UNICODE | re.MULTILINE | re.DOTALL)
 
-str_re_replace_prop = r"\b(%s:[^\s]+?)(?=$|\s)"
+str_re_replace_prop = r"\b({prop_name}:[^\s]+?)(?=$|\s)"
 prop_replace_regex_cache = {}
 
 RESETMARKER = "#resetmarker"
@@ -29,8 +29,9 @@ RESETMARKER = "#resetmarker"
 def get_regex_for_replacing_prop(prop):
     if prop not in prop_replace_regex_cache:
         # create and cache
-        prop_replace_regex_cache[prop] = re.compile(str_re_replace_prop % prop, re.UNICODE)
+        prop_replace_regex_cache[prop] = re.compile(str_re_replace_prop.format(prop_name = prop), re.UNICODE)
     return prop_replace_regex_cache[prop]
+
 
 def get_colors(col_string):
     parts = col_string.upper().split()
@@ -154,9 +155,9 @@ def get_editor_input(initial_text):
             
             slept = 0.0
             WAIT_TIME = 0.2
-            print("Waiting for saving %s (to abort, press Ctrl+C)." % tmpfile)
+            print("Waiting for saving '{fn}' (to abort, press Ctrl+C).".format(fn = tmpfile))
             while True:
-                print("%0.2f seconds elapsed..." % slept, end="\r")
+                print("{sec:0.2f} seconds elapsed...".format(sec = slept), end="\r")
                 if os.path.getmtime(tmpfile) != created:
                     # The last modified time has changed - time to end the loop
                     break
@@ -255,20 +256,20 @@ class ColorRenderer(object):
                     # shorten file name
                     file_names = item.properties[prop]
                     for file_name in file_names:
-                        text = text.replace("file:%s" % file_name, "[%s]" % os.path.basename(file_name))
+                        text = text.replace("file:{fn}".format(fn = file_name), "[{fn}]".format(fn = os.path.basename(file_name)))
                 elif prop in (self.conf.DUE, self.conf.DONE, self.conf.CREATED, self.conf.STARTED):
                     # shorten date properties
                     text = get_regex_for_replacing_prop(prop).sub(
-                        "%s:%s" % (prop, shorten_date(item.properties[prop])), text) 
+                        "{prop_key}:{prop_val}".format(prop_key = prop, prop_val = shorten_date(item.properties[prop]))
+                        , text) 
             if prop in self.conf.suppress:
                 # remove this property
-                text = get_regex_for_replacing_prop(prop).sub(
-                    "", text)
+                text = get_regex_for_replacing_prop(prop).sub("", text)
         
         # urls are treated differently        
         if "url" in self.conf.shorten and item.urls:
             for url in item.urls:
-                text = text.replace(url, "[%s]" % urlparse.urlsplit(url).netloc)
+                text = text.replace(url, "[{urlbase}]".format(urlbase = urlparse.urlsplit(url).netloc))
 
         # remove duplicate whitespace
         return " ".join(text.split())
@@ -289,20 +290,20 @@ class ColorRenderer(object):
             tohi = "<<" + tohi
             text = text.replace(tohi, self.wrap_delegate(tohi))
         for tohi in item.markers:
-            tohi = "(%s)" % tohi
+            tohi = "({marker})".format(marker = tohi)
             text = text.replace(tohi, self.wrap_marker(tohi))
         
         if item.nr == None:
             prefix = "[   ] "
         else:
-            prefix = "[% 3d] " % item.nr
+            prefix = "[{item_nr: 3d}] ".format(item_nr = item.nr)
         # if ids are supported and an tid exists, we replace prefix with that
         if self.conf.id_support and item.tid:
             prefix = "[" + self.wrap_id(item.tid) + "] "
         if self.conf.id_support and "blockedby" in item.properties:
-            prefix = "<%s> %s" % (self.wrap_block(",".join(sorted(item.properties["blockedby"]))), prefix)
+            prefix = "<{block}> {prefix}".format(block = self.wrap_block(",".join(sorted(item.properties["blockedby"]))), prefix = prefix)
         if self.conf.STARTED in item.properties and not item.done:
-            prefix = "%s %s" % (self.wrap_block("*****"), prefix)    
+            prefix = "{marker} {prefix}".format(marker = self.wrap_block("*****"), prefix = prefix)    
             
         if item.is_report:
             listitem = self.wrap_report(text)
@@ -317,6 +318,6 @@ class ColorRenderer(object):
         else:
             listitem = text
         
-        listitem = "%s%s" % (prefix, listitem)
+        listitem = "{prefix}{item_str}".format(prefix = prefix, item_str = listitem)
 
         return listitem.replace(RESETMARKER, self.conf.col_default)

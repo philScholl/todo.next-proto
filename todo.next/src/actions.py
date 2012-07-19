@@ -18,8 +18,12 @@ from todolist import TodoList
 import collections, datetime, re, os, glob
 from itertools import groupby
 import webbrowser, codecs
+import logging
 
+# configuration
 conf = ConfigBorg()
+# logger
+logger = logging.getLogger("todonext.actions")
 
 # regex for detecting priority argument in CLI
 re_prio = re.compile("[xA-Z+-]", re.UNICODE)
@@ -62,7 +66,7 @@ def cmd_list(tl, args):
             if re_search.search(item.text):
                 nr += 1 
                 print(" ", cr.render(item))
-        suppress_if_quiet("%d todo items displayed." % nr, args)
+        suppress_if_quiet("{nr_items} todo items displayed.".format(nr_items = nr), args)
         
 
 def cmd_add(tl, args):
@@ -84,7 +88,9 @@ def cmd_add(tl, args):
         else:
             # single string 
             item = tl.add_item(args.text)
-        suppress_if_quiet("Added %s" % cr.render(item), args)
+        msg = "Added {item}".format(item = cr.render(item))
+        suppress_if_quiet(msg, args)
+        logger.debug(msg)
         item.check()
 
 
@@ -98,7 +104,9 @@ def cmd_remove(tl, args):
     with ColorRenderer() as cr:
         item_list = tl.get_items_by_index_list(args.items)
         if not item_list:
-            print("Could not find item(s) %s" % ", ".join(args.items))
+            msg = "Could not find item(s) {item_ids}".format(item_ids = ", ".join(args.items))
+            print(msg)
+            logger.info(msg)
             return
         if not args.force:
             print("Do you really want to remove the following item(s):")
@@ -113,7 +121,9 @@ def cmd_remove(tl, args):
         else:
             for item in item_list:
                 tl.remove_item(item)
-        suppress_if_quiet("%d todo items have been removed." % len(item_list), args)
+        msg = "{nr} todo items ({item_ids}) have been removed.".format(nr = len(item_list), item_ids = ",".join(item_list))
+        suppress_if_quiet(msg, args)
+        logger.info(msg)
 
 
 def cmd_done(tl, args):
@@ -144,7 +154,7 @@ def cmd_done(tl, args):
                 # update duration property
                 tl.replace_or_add_prop(item, conf.DURATION, duration)
 
-            suppress_if_quiet("  %s" % cr.render(item), args)
+            suppress_if_quiet("  {item}".format(item = cr.render(item)), args)
 
 
 def cmd_reopen(tl, args):
@@ -158,7 +168,7 @@ def cmd_reopen(tl, args):
         for item in tl.get_items_by_index_list(args.items):
             tl.reopen(item)
             tl.reindex()
-            suppress_if_quiet("  %s" % cr.render(item), args)
+            suppress_if_quiet("  {item}".format(item = cr.render(item)), args)
 
 
 def cmd_edit(tl, args):
@@ -176,7 +186,7 @@ def cmd_edit(tl, args):
             quit(0)
         item = tl.get_item_by_index(args.item)
         if not item:
-            print("Could not find item '%s'" % args.item)
+            print("Could not find item '{item_id}'".format(item_id = args.item))
             return
         
         print(" ", cr.render(item))
@@ -185,7 +195,7 @@ def cmd_edit(tl, args):
             # remove new lines
             edited_item = TodoItem(output.replace("\r\n", " ").replace("\n", " ").strip())
             tl.replace_item(item, edited_item)
-            suppress_if_quiet("  %s" % cr.render(edited_item), args)
+            suppress_if_quiet("  {item}".format(item = cr.render(edited_item)), args)
             edited_item.check()
         except KeyboardInterrupt:
             # editing has been aborted
@@ -212,11 +222,11 @@ def cmd_delegated(tl, args):
             del_list = sorted(to_list)
         nr = 0
         for delegate in del_list:
-            print("Delegated to", cr.wrap_delegate(delegate))
+            print("Delegated to {delegate}".format(delegate = cr.wrap_delegate(delegate)))
             for item in sorted(to_list[delegate], cmp=tl.default_sort):
                 nr += 1
                 print(" ", cr.render(item))
-        suppress_if_quiet("%d todo items displayed." % nr, args)
+        suppress_if_quiet("{nr} todo items displayed.".format(nr = nr), args)
 
 
 def cmd_tasked(tl, args):
@@ -239,11 +249,11 @@ def cmd_tasked(tl, args):
             ini_list = sorted(from_list)
         nr = 0
         for initiator in ini_list:
-            print("Tasks from", cr.wrap_delegate(initiator))
+            print("Tasks from {delegate}".format(delegate = cr.wrap_delegate(initiator)))
             for item in sorted(from_list[initiator], cmp=tl.default_sort):
                 print(" ", cr.render(item))
                 nr += 1
-        suppress_if_quiet("%d todo items displayed." % nr, args)
+        suppress_if_quiet("{nr} todo items displayed.".format(nr = nr), args)
             
 
 def cmd_overdue(tl, args):
@@ -257,41 +267,51 @@ def cmd_overdue(tl, args):
         for item in tl.list_items(lambda x: not x.done and x.is_overdue()):
             print(" ", cr.render(item))
             nr += 1
-        suppress_if_quiet("%d todo items displayed." % nr, args)
+        suppress_if_quiet("{nr} todo items displayed.".format(nr = nr), args)
 
 
 def cmd_report(tl, args):
     """shows a daily report of all done and report items
     
     :description: This command lists all done and report items for a given date
-        or date range. If no arguments are given, all available todo items are
+        or date range. If no arguments are given, the items of the last 7 days are
         displayed. 
     
     Required fields of :param:`args`:
     * from_date: either a date or a string like 'tomorrow' or '*'
-    * to_date: either a date or a string like 'tomorrow' or '*'
+    * to_date: either a date or a string like 'tomorrow'
     """
     with ColorRenderer() as cr:
         # default date used when no done date is specified
-        na_date = datetime.datetime(1970, 1, 1)
+        na_date = datetime.datetime(1970, 1, 1, 0, 0, 0, 0)
+        # today
+        now = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         # check from and to date, make them datetime or None
-        for nr, tdate in enumerate([args.from_date, args.to_date]):
-            pdate = to_date(tdate)
-            if isinstance(pdate, basestring):
-                pdate = None
-            if nr == 0:
-                args.from_date = pdate
-            elif nr == 1:
-                args.to_date = pdate
-        
         # what mode are we in?
         mode = None
-        if args.from_date and args.to_date:
+        if args.from_date in ("*", "all"):
+            mode, args.from_date, args.to_date = "ALL", na_date, now
+        else:
+            args.from_date = to_date(args.from_date)
+            args.to_date = to_date(args.to_date)
+            if isinstance(args.from_date, datetime.datetime):
+                args.from_date = args.from_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            else:
+                logger.debug("Cannot parse {date}".format(date = args.from_date))
+                args.from_date = None
+            if isinstance(args.to_date, datetime.datetime):
+                args.to_date = args.to_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            else:
+                logger.debug("Cannot parse {date}".format(date = args.to_date))
+                args.to_date = None
+        
+        if args.from_date and args.to_date and not mode:
             mode = "RANGE"
         elif args.from_date and not args.to_date:
             mode, args.to_date = "DAY", args.from_date
-        else:
-            mode, args.from_date, args.to_date = "ALL", na_date, datetime.datetime.now()
+        elif not mode:
+            # last 7 days
+            mode, args.from_date, args.to_date = "LASTWEEK", now - datetime.timedelta(days=7), now
 
         # swap dates, if necessary
         if args.from_date > args.to_date:
@@ -299,7 +319,7 @@ def cmd_report(tl, args):
         # set end date to end of day
         args.to_date = args.to_date.replace(hour=23, minute=59, second=59)
         
-        #TODO: for logging print(mode, args.from_date, args.to_date)
+        logger.debug("Report mode {0}: from {1} to {2}".format(mode, args.from_date, args.to_date))
         
         # get list of done and report items from current todo list
         report_list = list(tl.list_items(lambda x: (x.done or x.is_report)))
@@ -337,7 +357,7 @@ def cmd_report(tl, args):
                 archived_items = [item for item in res.todolist if item.done or item.is_report]
                 for item in archived_items:
                     # replace id with (A) to mark it as archived
-                    item.tid = "(A)"
+                    item.replace_or_add_prop(conf.ID, "(A)")
                 # append it to candidates
                 report_list.extend(archived_items)
         
@@ -358,13 +378,13 @@ def cmd_report(tl, args):
             if is_same_day(na_date, temp_date):
                 print("Report for unknown date:")
             else:
-                print("Report for %s:" % temp_date.strftime("%A, %Y-%m-%d"))
+                print("Report for {date}:".format(date = temp_date.strftime("%A, %Y-%m-%d")))
             # print the items, finally
             for item in groups:
                 print(" ", cr.render(item))
                 nr += 1
         
-        suppress_if_quiet("%d todo items displayed." % nr, args)
+        suppress_if_quiet("{nr} todo items displayed.".format(nr = nr), args)
 
 
 def cmd_agenda(tl, args):
@@ -384,7 +404,7 @@ def cmd_agenda(tl, args):
         else:
             args.date = to_date(args.date)
             if isinstance(args.date, basestring):
-                print("Could not parse date argument '%s'" % args.date)
+                print("Could not parse date argument '{date_str}'".format(date_str = args.date))
                 quit(-1)
         for item in tl.list_items(lambda x: True if x.due_date else False):
             if is_same_day(args.date, item.due_date) or list_all:
@@ -401,13 +421,13 @@ def cmd_agenda(tl, args):
             if (na_date.year, na_date.month, na_date.day) == keys:
                 print("No done date attached")
             else:
-                print("Agenda for %d-%02d-%02d:" % keys)
+                print("Agenda for {0:d}-{1:02d}-{2:02d}:".format(*keys))
             for item in groups:
                 print(" ", cr.render(item))
-        suppress_if_quiet("%d todo items displayed." % len(agenda_items), args)
+        suppress_if_quiet("{nr} todo items displayed.".format(nr = len(agenda_items)), args)
 
 
-def cmd_config(tl, args):
+def cmd_config(tl, args): #@UnusedVariable
     """open todo.next configuration in editor
     
     Required fields of :param:`args`:
@@ -425,11 +445,11 @@ def cmd_prio(tl, args):
     with ColorRenderer() as cr:
         prio_items = tl.get_items_by_index_list(args.items)
         if not prio_items:
-            print("Could not find items %s" % ", ".join(args.items))
+            print("Could not find items {item_ids}".format(item_ids = ", ".join(args.items)))
             return
         new_prio = args.priority
         if not re_prio.match(new_prio):
-            print("Priority '%s' can't be recognized (must be one of A to Z or +/-)" % new_prio)
+            print("Priority '{prio}' can't be recognized (must be one of A to Z or +/-)".format(prio = new_prio))
             return
         for item in prio_items:
             old_prio = item.priority
@@ -437,32 +457,32 @@ def cmd_prio(tl, args):
                 # remove priority
                 suppress_if_quiet("  Removing priority:", args)
                 tl.set_priority(item, None)
-                suppress_if_quiet("  %s" % cr.render(item), args)
+                suppress_if_quiet("  {item}".format(item = cr.render(item)), args)
             elif new_prio == "-":
                 if old_prio in ("Z", None):
                     print("  Can't lower priority of following item:")
                     print(" ", cr.render(item))
                 else:
                     temp_prio = chr(ord(old_prio)+1)
-                    suppress_if_quiet("  Lower priority from %s to %s:" % (old_prio, temp_prio), args)
+                    suppress_if_quiet("  Lower priority from {old_prio} to {new_prio}:".format(old_prio = old_prio, new_prio = temp_prio), args)
                     tl.set_priority(item, temp_prio)
-                    suppress_if_quiet("  %s" % cr.render(item), args)
+                    suppress_if_quiet("  {item}".format(item = cr.render(item)), args)
             elif new_prio == "+":
                 if old_prio in ("A", None):
                     print("  Can't raise priority of following item:")
                     print(" ", cr.render(item))
                 else:
                     temp_prio = chr(ord(old_prio)-1)
-                    suppress_if_quiet("  Raise priority from %s to %s:" % (old_prio, temp_prio), args)
+                    suppress_if_quiet("  Raise priority from {old_prio} to {new_prio}:".format(old_prio = old_prio, new_prio = temp_prio), args)
                     tl.set_priority(item, temp_prio)
-                    suppress_if_quiet("  %s" % cr.render(item), args)
+                    suppress_if_quiet("  {item}".format(item = cr.render(item)), args)
             else:
-                suppress_if_quiet("  Setting priority from %s to %s:" % (old_prio, new_prio), args)
+                suppress_if_quiet("  Setting priority from {old_prio} to {new_prio}:".format(old_prio = old_prio, new_prio = new_prio), args)
                 tl.set_priority(item, new_prio)
-                suppress_if_quiet("  %s" % cr.render(item), args)
+                suppress_if_quiet("  {item}".format(item = cr.render(item)), args)
                 
                 
-def cmd_stats(tl, args):
+def cmd_stats(tl, args): #@UnusedVariable
     """displays some simple statistics about your todo list
     
     Required fields of :param:`args`:
@@ -487,13 +507,13 @@ def cmd_stats(tl, args):
                 counter["report"] += 1
             delegates.update(item.delegated_to)
             delegates.update(item.delegated_from)
-        print("Total number of items: %d" % counter["total"])
-        print("Open items           : %d" % counter["open"])
-        print(cr.wrap_prioritized("Prioritized items    : %d" % counter["prioritized"]))
-        print(cr.wrap_overdue("Overdue items        : %d" % counter["overdue"]))
-        print(cr.wrap_today("Items due today      : %d" % counter["today"]))
-        print(cr.wrap_done("Done items           : %d" % counter["done"]))
-        print(cr.wrap_report("Report items         : %d" % counter["report"]))
+        print("Total number of items: {stat}".format(stat = counter["total"]))
+        print("Open items           : {stat}".format(stat = counter["open"]))
+        print(cr.wrap_prioritized("Prioritized items    : {stat}".format(stat = counter["prioritized"])))
+        print(cr.wrap_overdue("Overdue items        : {stat}".format(stat = counter["overdue"])))
+        print(cr.wrap_today("Items due today      : {stat}".format(stat = counter["today"])))
+        print(cr.wrap_done("Done items           : {stat}".format(stat = counter["done"])))
+        print(cr.wrap_report("Report items         : {stat}".format(stat = counter["report"])))
 
 
 def cmd_call(tl, args):
@@ -505,31 +525,31 @@ def cmd_call(tl, args):
     with ColorRenderer() as cr:
         item = tl.get_item_by_index(args.item)
         if not item:
-            print("Could not find item '%s'" % args.item)
+            print("Could not find item '{item_id}'".format(item_id = args.item))
             return
 
         nr = 0
         actions = {}
         for toopen in item.urls:
-            print("  [% 3d] Open web site %s" % (nr, toopen))
+            print("  [{nr: 3d}] Open web site {url}".format(nr = nr, url = toopen))
             actions[nr] = (webbrowser.open_new_tab, toopen)
             nr += 1
         for file_name in item.properties.get(conf.FILE, []):
             if not os.path.exists(file_name):
-                print("  [xxx] File %s does not exist" % file_name)
+                print("  [xxx] File {fn} does not exist".format(fn = file_name))
             else:
-                print("  [% 3d] Open file %s with default editor" % (nr, file_name))
+                print("  [{nr: 3d}] Open file {fn} with default editor".format(nr = nr, fn = file_name))
                 actions[nr] = (os.startfile, file_name)
                 nr += 1
         for email in item.properties.get(conf.MAILTO, []):
-            print("  [% 3d] Write a mail to %s with default mail program" % (nr, email))
+            print("  [{nr: 3d}] Write a mail to {email} with default mail program".format(nr = nr, email = email))
             actions[nr] = (os.startfile, "mailto:" + email)
             nr += 1
         # simple case: only one action available
         if len(actions) == 1:
             actions[0][0](actions[0][1])
         elif len(actions) > 1:
-            choice = raw_input("Please enter your choice (0-%d): " % (len(actions)-1)).strip()
+            choice = raw_input("Please enter your choice (0-{max:d}): ".format(max = len(actions)-1)).strip()
             try:
                 choice = int(choice)
             except:
@@ -576,7 +596,7 @@ def cmd_project(tl, args):
             for item in sorted(project_dict[project], cmp=tl.default_sort):
                 nr += 1
                 print(" ", cr.render(item))
-        suppress_if_quiet("%d todo items displayed." % nr, args)
+        suppress_if_quiet("{nr} todo items displayed.".format(nr = nr), args)
             
 
 def cmd_context(tl, args):
@@ -612,10 +632,10 @@ def cmd_context(tl, args):
             for item in sorted(context_dict[context], cmp=tl.default_sort):
                 print(" ", cr.render(item))
                 nr += 1 
-        suppress_if_quiet("%d todo items displayed." % nr, args)
+        suppress_if_quiet("{nr} todo items displayed.".format(nr = nr), args)
 
 
-def cmd_backup(tl, args):
+def cmd_backup(tl, args): #@UnusedVariable
     """backups the current todo file to a timestamped file
     
     Required fields of :param:`args`:
@@ -635,14 +655,14 @@ def cmd_backup(tl, args):
     dst_fn = os.path.join(backup_folder, filename)
     if os.path.exists(dst_fn):
         # file already exists: what to do?
-        if not confirm_action("File %s already exists. Overwrite (y/N) " % dst_fn):
+        if not confirm_action("File {fn} already exists. Overwrite (y/N) ".format(fn = dst_fn)):
             print("  Aborting...")
             quit(0)
         else:
-            print("  Overwriting %s..." % dst_fn)
+            print("  Overwriting {fn}...".format(fn = dst_fn))
     # copying the todo file to the destination
     with codecs.open(conf.todo_file, "r", "utf-8") as src:
-        suppress_if_quiet("  Copying todo file to %s..." % dst_fn, args)
+        suppress_if_quiet("  Copying todo file to {fn}...".format(fn = dst_fn), args)
         with codecs.open(dst_fn, "w", "utf-8") as dst:
             dst.write(src.read())
     suppress_if_quiet("Successfully backed up todo file.", args)
@@ -656,46 +676,45 @@ def cmd_archive(tl, args):
     
     Required fields of :param:`args`:
     """
-    with ColorRenderer() as cr:
-        # base directory of todo file
-        base_dir = os.path.dirname(conf.todo_file)
+    # base directory of todo file
+    base_dir = os.path.dirname(conf.todo_file)
+    
+    # get list of done and report items
+    report_list = list(tl.list_items(lambda x: x.done or x.is_report))
+    # default date used when no done date is specified
+    na_date = datetime.datetime(1970, 1, 1)
+    # sort filtered list by "done" date 
+    report_list.sort(key=lambda x: x.done_date or na_date, reverse=True)
+    
+    # for mapping items to file names
+    file_map = collections.defaultdict(list)
+    
+    for item in report_list:
+        item_date = item.done_date or na_date
+        if is_same_day(item_date, na_date):
+            dst_fn = conf.archive_unsorted_filename
+        else:
+            dst_fn = os.path.join(base_dir, item_date.strftime(conf.archive_filename_scheme))
         
-        # get list of done and report items
-        report_list = list(tl.list_items(lambda x: x.done or x.is_report))
-        # default date used when no done date is specified
-        na_date = datetime.datetime(1970, 1, 1)
-        # sort filtered list by "done" date 
-        report_list.sort(key=lambda x: x.done_date or na_date, reverse=True)
-        
-        # for mapping items to file names
-        file_map = collections.defaultdict(list)
-        
-        for item in report_list:
-            item_date = item.done_date or na_date
-            if is_same_day(item_date, na_date):
-                dst_fn = conf.archive_unsorted_filename
-            else:
-                dst_fn = os.path.join(base_dir, item_date.strftime(conf.archive_filename_scheme))
-            
-            # if not existing, create it
-            if not os.path.exists(os.path.dirname(dst_fn)):
-                os.makedirs(os.path.dirname(dst_fn))
-            # add to file map
-            file_map[dst_fn].append(item)
-        
-        nr_archived = 0
-        # now we append the items to the right file
-        for dst_fn in file_map:
-            nr_archived += len(file_map[dst_fn])
-            # open files in append mode
-            with codecs.open(dst_fn, "a", "utf-8") as fp:
-                for item in file_map[dst_fn]:
-                    # and write them
-                    fp.write(item.text + "\n")
-                    # and remove the item from todo list
-                    tl.remove_item(item)
-        
-        suppress_if_quiet("Successfully archived %d todo items." % nr_archived, args)
+        # if not existing, create it
+        if not os.path.exists(os.path.dirname(dst_fn)):
+            os.makedirs(os.path.dirname(dst_fn))
+        # add to file map
+        file_map[dst_fn].append(item)
+    
+    nr_archived = 0
+    # now we append the items to the right file
+    for dst_fn in file_map:
+        nr_archived += len(file_map[dst_fn])
+        # open files in append mode
+        with codecs.open(dst_fn, "a", "utf-8") as fp:
+            for item in file_map[dst_fn]:
+                # and write them
+                fp.write(item.text + "\n")
+                # and remove the item from todo list
+                tl.remove_item(item)
+    
+    suppress_if_quiet("Successfully archived {nr} todo items.".format(nr = nr_archived), args)
 
 
 def cmd_delay(tl, args):
@@ -709,19 +728,19 @@ def cmd_delay(tl, args):
     with ColorRenderer() as cr:
         item = tl.get_item_by_index(args.item)
         if not item:
-            print("Could not find item '%s'" % args.item)
+            print("Could not find item '{item_id}'".format(item_id = args.item))
             return
         if item.due_date:
             new_date = to_date(args.date, item.due_date)
             if isinstance(new_date, basestring):
                 # remove first character, as it is "?" with a non-parsable date
-                print("The given relative date could not be parsed: %s" % new_date[1:])
+                print("The given relative date could not be parsed: {date}".format(date = new_date[1:]))
             else:
                 # ask for confirmation
                 if not args.force:
                     print(" ", cr.render(item))
-                    if not confirm_action("Delaying the preceding item's date from %s to %s (y/N)?" % 
-                        (from_date(item.due_date), from_date(new_date))):
+                    if not confirm_action("Delaying the preceding item's date from {from_date} to {to_date} (y/N)?".format(
+                        from_date = from_date(item.due_date), to_date = from_date(new_date))):
                         return
                 # do the actual replacement
                 tl.replace_or_add_prop(item, conf.DUE, from_date(new_date), new_date)
@@ -729,19 +748,10 @@ def cmd_delay(tl, args):
             new_date = to_date(args.date)
             if not args.force:
                 print(" ", cr.render(item))
-                if not confirm_action("The preceding item has no due date set, set to %s (y/N)?" % from_date(new_date)):
+                if not confirm_action("The preceding item has no due date set, set to {date} (y/N)?".format(date = from_date(new_date))):
                     return
                 tl.replace_or_add_prop(item, conf.DUE, from_date(new_date), new_date)
-        suppress_if_quiet("  %s" % cr.render(item), args)
-
-
-def cmd_clean(tl, args):
-    """removes all outdated todo items from the todo list
-    
-    Required fields of :param:`args`:
-    """
-    # TODO: removes all outdated files from todo.txt - needs to be confirmed
-    raise NotImplementedError()
+        suppress_if_quiet("  {item}".format(item = cr.render(item)), args)
 
 
 def cmd_search(tl, args):
@@ -796,10 +806,10 @@ def cmd_search(tl, args):
         all_matches.sort(key = lambda x:x[0])
         # group by filename
         for filename, items in groupby(all_matches, lambda x: x[0]):
-            print("File '%s':" % filename)
+            print("File '{fn}':".format(fn = filename))
             for item in items:
                 print(" ", cr.render(item[1]))
-        suppress_if_quiet("%d matching todo items found" % len(all_matches), args)
+        suppress_if_quiet("{nr} matching todo items found".format(nr = len(all_matches)), args)
         
         
 def cmd_attach(tl, args):
@@ -812,13 +822,13 @@ def cmd_attach(tl, args):
     with ColorRenderer() as cr:
         item = tl.get_item_by_index(args.item)
         if not item:
-            print("Could not find item '%s'" % args.item)
+            print("Could not find item '{item_id}'".format(item_id = args.item))
             return
 
         if re_urls.match(args.location):
             # we got an URL
-            suppress_if_quiet("Attaching URL %s" % args.location, args)
-            item.text += " %s" % args.location
+            suppress_if_quiet("Attaching URL {url}".format(url = args.location), args)
+            item.text += " {url}".format(url = args.location)
             item.urls.append(args.location.strip())
             tl.dirty = True
             tl.reindex()
@@ -831,13 +841,13 @@ def cmd_attach(tl, args):
                 path = os.path.abspath(args.location)
                 
             if not os.path.exists(path):
-                print("File path '%s' does not exist" % path)
+                print("File path '{fn}' does not exist".format(fn = path))
                 quit(-1)
             
-            suppress_if_quiet("Attaching file %s" % path, args)
+            suppress_if_quiet("Attaching file {fn}".format(fn = path), args)
             tl.replace_or_add_prop(item, conf.FILE, path)
             tl.reindex()
-        suppress_if_quiet("  %s" % cr.render(item), args)
+        suppress_if_quiet("  {item}".format(item = cr.render(item)), args)
 
 
 def cmd_detach(tl, args):
@@ -849,7 +859,7 @@ def cmd_detach(tl, args):
     with ColorRenderer() as cr:
         item = tl.get_item_by_index(args.item)
         if not item:
-            print("Could not find item '%s'" % args.item)
+            print("Could not find item '{item_id}'".format(item_id = args.item))
             return
         attmnt_list = []
         attmnt_list.extend(("url", url) for url in item.urls)
@@ -863,7 +873,7 @@ def cmd_detach(tl, args):
         if len(attmnt_list) > 1:
             print("Please choose one of the following attachments to delete:")
             for nr, attmnt in enumerate(attmnt_list):
-                print("  [%d] %s" % (nr, attmnt[1]))
+                print("  [{nr: 2d}] {attmnt}".format(nr = nr, attmnt = attmnt[1]))
             print("  [x] Abort operation")
             answer = raw_input("Your choice: ").lower().strip()
             if answer == "x":
@@ -878,11 +888,11 @@ def cmd_detach(tl, args):
             item = tl.replace_or_add_prop(item, conf.FILE, None, attmnt[1])
         else:
             item.text = " ".join(item.text.replace(attmnt[1], "").split())
-        suppress_if_quiet("  %s" % cr.render(item), args)
+        suppress_if_quiet("  {item}".format(item = cr.render(item)), args)
         tl.dirty = True
 
 
-def cmd_check(tl, args):
+def cmd_check(tl, args): #@UnusedVariable
     """checks the todo list for syntactical validity
     
     Required fields of :param:`args`:
@@ -894,7 +904,7 @@ def cmd_check(tl, args):
             print(" ", cr.render(item))
             for warning in warnings:
                 print(" ", warning)
-        print("%s warning(s) have been found" % (nr or "No"))
+        print("{nr} warning(s) have been found".format(nr = (nr or "No")))
 
 
 def cmd_repeat(tl, args):
@@ -909,10 +919,16 @@ def cmd_repeat(tl, args):
     """
     with ColorRenderer() as cr:
         item = tl.get_item_by_index(args.item)
+        # create a copy
         new_item = tl.add_item(item.text)
-        item.set_to_done()
+        # we have to create a new ID for the copied item
+        new_item.remove_prop(conf.ID)
+        tl.replace_or_add_prop(new_item, conf.ID, tl.create_tid(new_item))
+        # set the due date of the new item to the specified date
         tl.replace_or_add_prop(new_item, conf.DUE, args.date, to_date(args.date))
-        suppress_if_quiet("Marked todo item as 'done' and reinserted:\n  %s" % cr.render(new_item), args)
+        # set old item to done
+        item.set_to_done()
+        suppress_if_quiet("Marked todo item as 'done' and reinserted:\n  {item}".format(item = cr.render(new_item)), args)
         
 
 def cmd_lsa(tl, args):
@@ -954,11 +970,11 @@ def cmd_mark(tl, args):
             
         nr = 0
         for marker in args_list:
-            print(cr.wrap_marker("(%s)" % marker, reset=True))
+            print(cr.wrap_marker("({marker})".format(marker = marker), reset=True))
             for item in sorted(marker_dict[marker], cmp=tl.default_sort):
                 print(" ", cr.render(item))
                 nr += 1
-        suppress_if_quiet("%d todo items displayed." % nr, args)
+        suppress_if_quiet("{nr} todo items displayed.".format(nr = nr), args)
         
 
 def cmd_start(tl, args):
@@ -979,14 +995,14 @@ def cmd_start(tl, args):
         else:
             item = tl.get_item_by_index(args.item)
             if not item:
-                print("No item found with number or ID %s" % args.item)
+                print("No item found with number or ID '{item_id}'".format(item_id = args.item))
                 return
             if item.done:
                 print("Todo item has already been set to 'done':")
                 print(" ", cr.render(item))
                 return
             if conf.STARTED in item.properties:
-                print("Todo item has already been started on %s" % from_date(item.properties[conf.STARTED]))
+                print("Todo item has already been started on {date}".format(date = from_date(item.properties[conf.STARTED])))
                 print(" ", cr.render(item))
                 return
             now = datetime.datetime.now()
@@ -1005,7 +1021,7 @@ def cmd_stop(tl, args):
     with ColorRenderer() as cr:
         item = tl.get_item_by_index(args.item)
         if not item:
-            print("No item found with number or ID %s" % args.item)
+            print("No item found with number or ID '{item_id}'".format(item_id = args.item))
             return
         if conf.STARTED not in item.properties:
             print("Todo item has not been started yet")
@@ -1022,10 +1038,10 @@ def cmd_stop(tl, args):
         # add delta time in minutes
         duration += int(time_delta.total_seconds() / 60) 
         # remove started property
-        tl.replace_or_add_prop(item, conf.STARTED, None)
+        tl.remove_prop(item, conf.STARTED, None)
         # update duration property
         tl.replace_or_add_prop(item, conf.DURATION, duration)
-        suppress_if_quiet("You have worked %s minutes on:\n  %s" % (duration, cr.render(item)), args)
+        suppress_if_quiet("You have worked {dur} minutes on:\n  {item}".format(dur = duration, item = cr.render(item)), args)
         
 
 def cmd_block(tl, args):
@@ -1046,12 +1062,12 @@ def cmd_block(tl, args):
         item = tl.get_item_by_index(args.item)
         blocked = tl.get_item_by_index(args.blocked)
         if item.tid in blocked.properties.get(conf.BLOCKEDBY, []):
-            print("Todo item '%s' is already a pre-requisite of '%s'." % (item, blocked))
+            print("Todo item '{item_id}' is already a pre-requisite of '{blocked_id}'.".format(item_id = item, blocked_id = blocked))
             return
         tl.replace_or_add_prop(blocked, conf.BLOCKEDBY, item.tid)
         tl.clean_dependencies()
         tl.reindex()
-        suppress_if_quiet("  %s" % cr.render(blocked), args)
+        suppress_if_quiet("  {item}".format(item = cr.render(blocked)), args)
          
 
 def cmd_unblock(tl, args):
@@ -1072,12 +1088,13 @@ def cmd_unblock(tl, args):
         item = tl.get_item_by_index(args.item)
         blocked = tl.get_item_by_index(args.blocked)
         if item.tid not in blocked.properties.get(conf.BLOCKEDBY, []):
-            print("Todo item '%s' is not a pre-requisite of '%s'." % (item, blocked))
+            print("Todo item '{item_id}' is not a pre-requisite of '{blocked_id}'.".format(
+                item_id = item, blocked_id = blocked))
             return
-        tl.replace_or_add_prop(blocked, conf.BLOCKEDBY, None, item.tid)
+        tl.remove_prop(blocked, conf.BLOCKEDBY, item.tid)
         tl.clean_dependencies()
         tl.reindex()
-        suppress_if_quiet("  %s" % cr.render(blocked), args)
+        suppress_if_quiet("  {item}".format(item = cr.render(blocked)), args)
 
 
 # Aliases

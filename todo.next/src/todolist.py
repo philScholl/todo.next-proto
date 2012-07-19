@@ -6,14 +6,14 @@ from __future__ import print_function
 
 from date_trans import from_date
 from todoitem import TodoItem
+from config import ConfigBorg
 
 import datetime, codecs, hashlib, random, math, sys
 from itertools import groupby
-from config import ConfigBorg
 
 ALPHABET = "abcdefghijklmnopqrstuvwxyz"
 BASE = len(ALPHABET)
-MAXLEN = 3
+DEFAULT_LEN = 3
 
 conf = ConfigBorg()
 
@@ -106,7 +106,7 @@ class TodoList(object):
                 # sort list according to original order (line number in todo.txt file)
                 self.todolist.sort(key=lambda x: x.line_nr if x.line_nr != None else sys.maxint)
             for item in self.todolist:
-                fp.write("%s\n" % item.text)
+                fp.write("{item_str}\n".format(item_str = item.text))
     
     
     def _append(self, item_str):
@@ -141,18 +141,18 @@ class TodoList(object):
                 item = self.get_item_by_index(tid)
                 if tid not in self.tids or item.done:
                     # blocked item is not existing anymore
-                    # print("ID %s blocks %s but is not existing anymore" % (tid, item_id))
+                    # print("ID '{item_id}' blocks '{block_id}' but is not existing anymore".format(item_id = tid, block_id = item_id))
                     item = self.tids[item_id]
                     self.replace_or_add_prop(item, conf.BLOCKEDBY, None, tid)
                     self.dirty = True
 
     
-    def create_tid(self, item, maxlen = MAXLEN):
-        """creates a random 4-letter tid
+    def create_tid(self, item, maxlen = DEFAULT_LEN):
+        """creates a random :var:`DEFAULT_LEN`-letter tid
         
         :param item: a todo item
         :type item: :class:`TodoItem`
-        :return: a 4-letter tid
+        :return: a :var:`DEFAULT_LEN`-letter tid
         :rtype: str 
         """
         # set first value
@@ -169,7 +169,7 @@ class TodoList(object):
             max_nr = len(ALPHABET) ** maxlen
             # maximal size of the the hex string to be able to represent this number
             len_hex_str = int(math.ceil(math.log(max_nr, 16)))
-            # get base-26 MAXLEN-digit nr
+            # get base-26 DEFAULT_LEN-digit nr
             nr = int(md5.hexdigest()[:len_hex_str], 16) % max_nr
             
             # get base-26 representation of nr
@@ -240,13 +240,20 @@ class TodoList(object):
                 yield (item, warnings)
         if conf.id_support:
             # check for duplicate tids
-            for key, group in groupby(tids, key=lambda x: x[0]):
+            for item_id, group in groupby(tids, key=lambda x: x[0]):
                 group = [item for _, item in group]
                 if len(group) > 1:
                     for item in group:
-                        yield (item, ["Item has duplicate key %s" % key,])                    
+                        yield (item, ["Item has duplicate ID '{item_id}'".format(item_id = item_id),])                    
 
 
+    def remove_prop(self, item, property_name, selector_value = None):
+        item.remove_prop(property_name, selector_value)
+        self.reindex()
+        self.dirty = True
+        return item
+        
+    
     def replace_or_add_prop(self, item, prop_name, new_prop_val, real_prop_val = None):
         """replaces a property in the item text or, if already existent, updates it.
         
@@ -411,7 +418,7 @@ class TodoList(object):
                 # slice off the old prio
                 item.text = item.text[4:]
             # prepend the new prio
-            item.text = "(%s) %s" % (new_prio, item.text)
+            item.text = "({prio}) {item_str}".format(prio = new_prio, item_str = item.text)
         else:
             # remove priority flag
             if item.priority:
