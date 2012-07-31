@@ -47,7 +47,7 @@ class TodoItem(object):
         elif isinstance(date_or_str, (datetime.date, datetime.datetime)):
             self.replace_or_add_prop(prop_name, from_date(date_or_str), date_or_str)
         else:
-            print("ERROR: setting non-date or non-string")
+            logging.error(u"ERROR: setting non-date or non-string")
     
     def get_due_date(self):
         return self.properties.get(conf.DUE, None)
@@ -111,12 +111,12 @@ class TodoItem(object):
             file_names = self.properties[conf.FILE]
             for fn in file_names:
                 if not os.path.exists(fn):
-                    wtext = "WARNING: File '{fn}' does not exist (anymore).".format(fn = fn)
+                    wtext = u"WARNING: File '{fn}' does not exist (anymore).".format(fn = fn)
                     warnings.append(wtext)
         for prop in self.properties:
             if prop in conf.DATE_PROPS:
                 if isinstance(self.properties[prop], basestring):
-                    wtext = "WARNING: property {prop_key}:{prop_val} is not a valid date.".format(
+                    wtext = u"WARNING: property {prop_key}:{prop_val} is not a valid date.".format(
                         prop_key = prop, prop_val = self.properties[prop])
                     warnings.append(wtext)
         if display:
@@ -133,7 +133,7 @@ class TodoItem(object):
         if self.text.startswith(conf.DONE_PREFIX):
             self.text = self.text[2:]
             # remove done property
-            self.replace_or_add_prop(conf.DONE, None)
+            self.remove_prop(conf.DONE)
             self.dirty = True
     
     
@@ -167,7 +167,7 @@ class TodoItem(object):
                     del self.properties[property_name]
                 # remove from text
                 self.text = self.text.replace(
-                    "{prop_key}:{prop_val}".format(prop_key = property_name, prop_val = selector_value),
+                    u"{prop_key}:{prop_val}".format(prop_key = property_name, prop_val = selector_value),
                     "")
         else:
             # remove all instances of that property
@@ -181,7 +181,7 @@ class TodoItem(object):
             for match in matches:
                 self.text = self.text.replace(match, "")
         # replacing may leave multiple adjacent whitespaces - remove those
-        self.text = " ".join(self.text.split())
+        self.text = u" ".join(self.text.split())
         self.dirty = True
         return self
 
@@ -214,7 +214,7 @@ class TodoItem(object):
         matches = re_replace_prop.findall(self.text)
         
         if not new_property_value:
-            logger.warning("Removing via add_or_replace_prop is deprecated!")
+            logger.warning(u"Removing via add_or_replace_prop is deprecated!")
             # TODO: case new_prop_val == None, prop is MULTI_PROP and real is set... remove only one part
             if property_name in conf.MULTI_PROPS and real_property_value:
                 if property_name in self.properties:
@@ -235,7 +235,7 @@ class TodoItem(object):
                 for match in matches:
                     self.text = self.text.replace(match, "")
             # replacing may leave multiple adjacent whitespaces - remove those
-            self.text = " ".join(self.text.split())
+            self.text = u" ".join(self.text.split())
         else:
             # if multi prop, initialize to empty list
             if property_name in conf.MULTI_PROPS:
@@ -261,7 +261,7 @@ class TodoItem(object):
                     self.text = self.text.replace(match, "")
             else:
                 # adding a new property
-                self.text = self.text.strip() + " {prop_key}:{prop_val}".format(
+                self.text = self.text.strip() + u" {prop_key}:{prop_val}".format(
                     prop_key = property_name, prop_val = new_property_value)
         self.dirty = True
         return self

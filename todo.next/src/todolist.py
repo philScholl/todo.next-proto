@@ -8,7 +8,7 @@ from date_trans import from_date
 from todoitem import TodoItem
 from config import ConfigBorg
 
-import datetime, codecs, hashlib, random, math, sys
+import datetime, codecs, hashlib, random, math, sys, logging
 from itertools import groupby
 
 ALPHABET = "abcdefghijklmnopqrstuvwxyz"
@@ -16,6 +16,7 @@ BASE = len(ALPHABET)
 DEFAULT_LEN = 3
 
 conf = ConfigBorg()
+logger = logging.getLogger("todonext.todolist")
 
 class TodoList(object):
     """class representing a todo list that's stored in a ``todo.next`` file.
@@ -106,7 +107,10 @@ class TodoList(object):
                 # sort list according to original order (line number in todo.txt file)
                 self.todolist.sort(key=lambda x: x.line_nr if x.line_nr != None else sys.maxint)
             for item in self.todolist:
-                fp.write("{item_str}\n".format(item_str = item.text))
+                try:
+                    fp.write(u"{item_str}\n".format(item_str = item.text))
+                except Exception, ex:
+                    logger.error(u"Error while writing {item_str} to todo file".format(item_str = repr(item.text)))
     
     
     def _append(self, item_str):
@@ -418,7 +422,7 @@ class TodoList(object):
                 # slice off the old prio
                 item.text = item.text[4:]
             # prepend the new prio
-            item.text = "({prio}) {item_str}".format(prio = new_prio, item_str = item.text)
+            item.text = u"({prio}) {item_str}".format(prio = new_prio, item_str = item.text)
         else:
             # remove priority flag
             if item.priority:

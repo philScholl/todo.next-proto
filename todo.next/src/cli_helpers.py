@@ -14,7 +14,7 @@ from date_trans import shorten_date
 from config import ConfigBorg
 
 from colorama import init, deinit, Fore, Back, Style
-import re, tempfile, subprocess, os, codecs, time, urlparse
+import re, tempfile, subprocess, os, codecs, time, urlparse, sys
 
 # regex for finding parameters in docstring
 re_docstring_param = re.compile("^\s*\*(.+?)\:(.+?)$", re.UNICODE | re.MULTILINE)
@@ -55,8 +55,8 @@ def get_doc_description(func):
     """
     first_line = get_doc_help(func).strip()
     if not first_line.endswith("."):
-        first_line += ". "
-    description = ""
+        first_line += u". "
+    description = u""
     for description in re_docstring_desc.findall(func.__doc__):
         break
     
@@ -73,9 +73,9 @@ def get_doc_help(func):
     :rtype: str
     """
     try:
-        return func.__doc__.split("\n")[0].strip()
+        return func.__doc__.split(u"\n")[0].strip()
     except:
-        return "n/a"
+        return u"n/a"
 
 
 def get_doc_param(func, param_name):
@@ -95,9 +95,9 @@ def get_doc_param(func, param_name):
         for param, desc in re_docstring_param.findall(func.__doc__):
             if param.strip() == param_name:
                 return desc.strip()
-        return "n/a"
+        return u"n/a"
     except:
-        return "n/a"
+        return u"n/a"
 
 
 def open_editor(filename):
@@ -138,13 +138,16 @@ def get_editor_input(initial_text):
     :result: the changed text
     :rtype: utf-8 encoded str
     """
+    # normalize to unicode
+    if isinstance(initial_text, str):
+        initial_text = initial_text.decode("utf-8")
     # create a temporary text file
     tmpfile = tempfile.mktemp(".txt", "todo.next.")
     result = initial_text
     try:
         # write the initial text to this temporary file
         with codecs.open(tmpfile, "w", "utf-8") as fp:
-            fp.write(initial_text)
+            fp.write(initial_text.encode("utf-8"))
         
         # this is platform dependent
         if os.name == "nt":
@@ -256,11 +259,11 @@ class ColorRenderer(object):
                     # shorten file name
                     file_names = item.properties[prop]
                     for file_name in file_names:
-                        text = text.replace("file:{fn}".format(fn = file_name), "[{fn}]".format(fn = os.path.basename(file_name)))
+                        text = text.replace(u"file:{fn}".format(fn = file_name), u"[{fn}]".format(fn = os.path.basename(file_name)))
                 elif prop in (self.conf.DUE, self.conf.DONE, self.conf.CREATED, self.conf.STARTED):
                     # shorten date properties
                     text = get_regex_for_replacing_prop(prop).sub(
-                        "{prop_key}:{prop_val}".format(prop_key = prop, prop_val = shorten_date(item.properties[prop]))
+                        u"{prop_key}:{prop_val}".format(prop_key = prop, prop_val = shorten_date(item.properties[prop]))
                         , text) 
             if prop in self.conf.suppress:
                 # remove this property
@@ -269,10 +272,10 @@ class ColorRenderer(object):
         # urls are treated differently        
         if "url" in self.conf.shorten and item.urls:
             for url in item.urls:
-                text = text.replace(url, "[{urlbase}]".format(urlbase = urlparse.urlsplit(url).netloc))
+                text = text.replace(url, u"[{urlbase}]".format(urlbase = urlparse.urlsplit(url).netloc))
 
         # remove duplicate whitespace
-        return " ".join(text.split())
+        return u" ".join(text.split())
     
     
     def render(self, item):
@@ -294,16 +297,16 @@ class ColorRenderer(object):
             text = text.replace(tohi, self.wrap_marker(tohi))
         
         if item.nr == None:
-            prefix = "[   ] "
+            prefix = u"[   ] "
         else:
-            prefix = "[{item_nr: 3d}] ".format(item_nr = item.nr)
+            prefix = u"[{item_nr: 3d}] ".format(item_nr = item.nr)
         # if ids are supported and an tid exists, we replace prefix with that
         if self.conf.id_support and item.tid:
-            prefix = "[" + self.wrap_id(item.tid) + "] "
+            prefix = u"[" + self.wrap_id(item.tid) + u"] "
         if self.conf.id_support and "blockedby" in item.properties:
-            prefix = "<{block}> {prefix}".format(block = self.wrap_block(",".join(sorted(item.properties["blockedby"]))), prefix = prefix)
+            prefix = u"<{block}> {prefix}".format(block = self.wrap_block(",".join(sorted(item.properties["blockedby"]))), prefix = prefix)
         if self.conf.STARTED in item.properties and not item.done:
-            prefix = "{marker} {prefix}".format(marker = self.wrap_block("*****"), prefix = prefix)    
+            prefix = u"{marker} {prefix}".format(marker = self.wrap_block(u"*****"), prefix = prefix)    
             
         if item.is_report:
             listitem = self.wrap_report(text)
@@ -318,6 +321,6 @@ class ColorRenderer(object):
         else:
             listitem = text
         
-        listitem = "{prefix}{item_str}".format(prefix = prefix, item_str = listitem)
+        listitem = u"{prefix}{item_str}".format(prefix = prefix, item_str = listitem)
 
         return listitem.replace(RESETMARKER, self.conf.col_default)

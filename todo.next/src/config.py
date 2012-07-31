@@ -23,8 +23,8 @@ class ConfigBorg(object):
     ID = "id"
     BLOCKEDBY = "blockedby"
     
-    DONE_PREFIX = "x "
-    REPORT_PREFIX = "* "
+    DONE_PREFIX = u"x "
+    REPORT_PREFIX = u"* "
     
     DATE_PROPS = [DONE, DUE, CREATED, STARTED]
     MULTI_PROPS = [BLOCKEDBY, FILE, MAILTO]

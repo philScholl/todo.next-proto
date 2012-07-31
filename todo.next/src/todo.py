@@ -84,7 +84,8 @@ class AliasedSubParsersAction(argparse._SubParsersAction):
 def to_unicode(string):
     """ decodes a string in the file system's encoding to unicode
     """
-    return string.decode(sys.getfilesystemencoding())
+    result = string.decode(sys.getfilesystemencoding())
+    return result
 
 
 def create_config_wizard():
@@ -127,7 +128,7 @@ def create_config_wizard():
 
 if __name__ == '__main__':
     logger = logging.getLogger("todonext")
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.WARNING)
     handler = logging.StreamHandler(sys.stderr)
     handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
     logger.addHandler(handler)
@@ -185,24 +186,24 @@ if __name__ == '__main__':
     parse_add.add_argument("text", type=to_unicode, nargs="*")
     
     parse_attach = subparser.add_parser("attach")
-    parse_attach.add_argument("item", type=str)
-    parse_attach.add_argument("location", type=str)
+    parse_attach.add_argument("item", type=to_unicode)
+    parse_attach.add_argument("location", type=to_unicode)
     
     if cconf.id_support:
         parse_block= subparser.add_parser("block")
-        parse_block.add_argument("item", type=str)
-        parse_block.add_argument("blocked", type=str)
+        parse_block.add_argument("item", type=to_unicode)
+        parse_block.add_argument("blocked", type=to_unicode)
     
         parse_unblock= subparser.add_parser("unblock")
-        parse_unblock.add_argument("item", type=str)
-        parse_unblock.add_argument("blocked", type=str)
+        parse_unblock.add_argument("item", type=to_unicode)
+        parse_unblock.add_argument("blocked", type=to_unicode)
 
     parse_call = subparser.add_parser("call")
-    parse_call.add_argument("item", type=str)
+    parse_call.add_argument("item", type=to_unicode)
         
     parse_delay = subparser.add_parser("delay")
-    parse_delay.add_argument("item", type=str, nargs="?")
-    parse_delay.add_argument("date", type=str, nargs="?")
+    parse_delay.add_argument("item", type=to_unicode, nargs="?")
+    parse_delay.add_argument("date", type=to_unicode, nargs="?")
     parse_delay.add_argument("-f", "--force", action="store_true")
     
     parse_delegated = subparser.add_parser("delegated")
@@ -210,13 +211,13 @@ if __name__ == '__main__':
     parse_delegated.add_argument("-a", "--all", action="store_true")
     
     parse_detach = subparser.add_parser("detach")
-    parse_detach.add_argument("item", type=str)
+    parse_detach.add_argument("item", type=to_unicode)
 
     parse_done = subparser.add_parser("done", aliases=("x",))
-    parse_done.add_argument("items", type=str, nargs="+")
+    parse_done.add_argument("items", type=to_unicode, nargs="+")
 
     parse_edit = subparser.add_parser("edit", aliases=("ed",))
-    parse_edit.add_argument("item", type=str, nargs="?")
+    parse_edit.add_argument("item", type=to_unicode, nargs="?")
 
     parse_list = subparser.add_parser("list", aliases=("ls",))
     parse_list.add_argument("search_string", type=to_unicode, nargs="?")
@@ -230,25 +231,25 @@ if __name__ == '__main__':
     parse_lsa.add_argument("-c", "--ci", action="store_true")
     
     parse_prio = subparser.add_parser("prio")
-    parse_prio.add_argument("items", type=str, nargs="+")
+    parse_prio.add_argument("items", type=to_unicode, nargs="+")
     parse_prio.add_argument("priority", type=str)
     
     parse_del = subparser.add_parser("remove", aliases=("rm", "del"))
-    parse_del.add_argument("items", type=str, nargs="+")
+    parse_del.add_argument("items", type=to_unicode, nargs="+")
     parse_del.add_argument("-f", "--force", action="store_true")
 
     parse_reopen = subparser.add_parser("reopen")
-    parse_reopen.add_argument("items", type=str, nargs="+")
+    parse_reopen.add_argument("items", type=to_unicode, nargs="+")
 
     parse_repeat = subparser.add_parser("repeat")
-    parse_repeat.add_argument("item", type=str)
-    parse_repeat.add_argument("date", type=str, nargs="?")
+    parse_repeat.add_argument("item", type=to_unicode)
+    parse_repeat.add_argument("date", type=to_unicode, nargs="?")
     
     parse_start = subparser.add_parser("start")
-    parse_start.add_argument("item", type=str, nargs="?")
+    parse_start.add_argument("item", type=to_unicode, nargs="?")
 
     parse_start = subparser.add_parser("stop")
-    parse_start.add_argument("item", type=str)
+    parse_start.add_argument("item", type=to_unicode)
     
     parse_tasked = subparser.add_parser("tasked")
     parse_tasked.add_argument("initiator", type=to_unicode, nargs="?")
@@ -259,27 +260,27 @@ if __name__ == '__main__':
     # -------------------------------------------------
 
     parse_agenda = subparser.add_parser("agenda", aliases=("ag",))
-    parse_agenda.add_argument("date", type=str, nargs="?")
+    parse_agenda.add_argument("date", type=to_unicode, nargs="?")
 
     parse_context = subparser.add_parser("context", aliases=("ctx",))
-    parse_context.add_argument("name", type=str, nargs="?")
+    parse_context.add_argument("name", type=to_unicode, nargs="?")
     parse_context.add_argument("-a", "--all", action="store_true")
     parse_context.add_argument("-c", "--ci", action="store_true")
     
     parse_mark = subparser.add_parser("mark")
-    parse_mark.add_argument("marker", type=str, nargs="?")
+    parse_mark.add_argument("marker", type=to_unicode, nargs="?")
     parse_mark.add_argument("-a", "--all", action="store_true")
     
     parse_overdue = subparser.add_parser("overdue", aliases=("over", "od"))
     
     parse_project = subparser.add_parser("project", aliases=("pr",))
-    parse_project.add_argument("name", type=str, nargs="?")
+    parse_project.add_argument("name", type=to_unicode, nargs="?")
     parse_project.add_argument("-a", "--all", action="store_true")
     parse_project.add_argument("-c", "--ci", action="store_true")
     
     parse_report = subparser.add_parser("report", aliases=("rep", ))
-    parse_report.add_argument("from_date", type=str, nargs="?")
-    parse_report.add_argument("to_date", type=str, nargs="?")
+    parse_report.add_argument("from_date", type=to_unicode, nargs="?")
+    parse_report.add_argument("to_date", type=to_unicode, nargs="?")
     
     parse_search = subparser.add_parser("search")
     parse_search.add_argument("search_string", type=to_unicode)
@@ -293,10 +294,10 @@ if __name__ == '__main__':
     # -------------------------------------------------
     
     parse_archive = subparser.add_parser("archive")
-    #parse_archive.add_argument("to_file", type=str, nargs="?")
+    #parse_archive.add_argument("to_file", type=to_unicode, nargs="?")
 
     parse_backup = subparser.add_parser("backup")
-    parse_backup.add_argument("filename", type=str, nargs="?")
+    parse_backup.add_argument("filename", type=to_unicode, nargs="?")
     
     parse_check = subparser.add_parser("check")
     
@@ -322,7 +323,7 @@ if __name__ == '__main__':
             try:
                 to_col = get_colors(config.get("display", color))
             except ConfigParser.Error, ex:
-                # TODO: log error
+                logger.warning("Configuration does not have a '{val}' value defined".format(color))
                 to_col = ""
         setattr(cconf, color, to_col)
         
