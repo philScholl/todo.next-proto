@@ -10,8 +10,8 @@ version of todo.next.
 """
 from __future__ import print_function
 
-from date_trans import shorten_date
-from config import ConfigBorg
+from todo.date_trans import shorten_date
+from todo.config import ConfigBorg
 
 from colorama import init, deinit, Fore, Back, Style
 import re, tempfile, subprocess, os, codecs, time, urlparse, sys

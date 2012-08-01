@@ -8,12 +8,13 @@ Contains all actions that can be executed by ``todo.next``
 .. moduleauthor:: Philipp Scholl <Phil@>
 """
 from __future__ import print_function
-from cli_helpers import ColorRenderer, get_editor_input, open_editor, confirm_action, suppress_if_quiet
-from date_trans import to_date, is_same_day, from_date
-from parsers import re_urls
-from config import ConfigBorg
-from todoitem import TodoItem
-from todolist import TodoList
+
+from misc.cli_helpers import ColorRenderer, get_editor_input, open_editor, confirm_action, suppress_if_quiet
+from todo.date_trans import to_date, is_same_day, from_date
+from todo.parsers import re_urls
+from todo.config import ConfigBorg
+from todo.todoitem import TodoItem
+from todo.todolist import TodoList
 
 import collections, datetime, re, os, glob
 from itertools import groupby
