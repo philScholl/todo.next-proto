@@ -215,40 +215,61 @@ class ColorRenderer(object):
         deinit()
         # we don't swallow the exceptions
         return False
+
+
+    def wrap_part(self, substring, color, reset = False):
+        """ wraps a substring in a todo list item with a color string 
+        
+        :param substring: the substring to wrap
+        :type substring: str
+        :param color: the color string to set for that substring
+        :type color: string
+        :param reset: if True, the RESETMARKER is immediately replaced by the default color again
+        :type reset: bool
+        :return: the wrapped substring
+        :rtype: str
+        """
+        return color + substring + (RESETMARKER if not reset else self.conf.col_default)
+    
+
+    def wrap_line(self, line, color):
+        """ wraps a whole todo list item with a color string 
+        
+        :param line: the line to wrap
+        :type line: str
+        :param color: the color string to set for that substring
+        :type color: string
+        :return: the color-wrapped line
+        :rtype: str
+        """
+        line = line.replace(RESETMARKER, color)
+        return color + line + self.conf.col_default        
+
     
     def wrap_context(self, context, reset = False):
-        return self.conf.col_context + context + (RESETMARKER if not reset else self.conf.col_default) 
-    
+        return self.wrap_part(context, self.conf.col_context, reset) 
     def wrap_project(self, project, reset = False):
-        return self.conf.col_project + project + (RESETMARKER if not reset else self.conf.col_default)
-    
+        return self.wrap_part(project, self.conf.col_project, reset)
     def wrap_delegate(self, delegate, reset = False):
-        return self.conf.col_delegate + delegate + (RESETMARKER if not reset else self.conf.col_default)
-    
+        return self.wrap_part(delegate, self.conf.col_delegate, reset)
     def wrap_id(self, tid, reset = False):
-        return self.conf.col_id + tid + (RESETMARKER if not reset else self.conf.col_default)
-    
+        return self.wrap_part(tid, self.conf.col_id, reset)
     def wrap_block(self, tid, reset = False):
-        return self.conf.col_block + tid + (RESETMARKER if not reset else self.conf.col_default)
-    
+        return self.wrap_part(tid, self.conf.col_block, reset)
     def wrap_marker(self, marker, reset = False):
-        return self.conf.col_marker + marker + (RESETMARKER if not reset else self.conf.col_default)
+        return self.wrap_part(marker, self.conf.col_marker, reset)
     
     def wrap_prioritized(self, line):
-        line = line.replace(RESETMARKER, self.conf.col_item_prio)
-        return self.conf.col_item_prio + line + self.conf.col_default
+        return self.wrap_line(line, self.conf.col_item_prio)
     def wrap_overdue(self, line):
-        line = line.replace(RESETMARKER, self.conf.col_item_overdue)
-        return self.conf.col_item_overdue + line + self.conf.col_default
+        return self.wrap_line(line, self.conf.col_item_overdue)
     def wrap_today(self, line):
-        line = line.replace(RESETMARKER, self.conf.col_item_today)
-        return self.conf.col_item_today + line + self.conf.col_default
+        return self.wrap_line(line, self.conf.col_item_today)
     def wrap_report(self, line):
-        line = line.replace(RESETMARKER, self.conf.col_item_report)
-        return self.conf.col_item_report + line + self.conf.col_default
+        return self.wrap_line(line, self.conf.col_item_report)
     def wrap_done(self, line):
-        line = line.replace(RESETMARKER, self.conf.col_item_done)
-        return self.conf.col_item_done + line + self.conf.col_default
+        return self.wrap_line(line, self.conf.col_item_done)
+    
     
     def clean_string(self, item):
         text = item.text

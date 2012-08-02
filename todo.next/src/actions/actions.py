@@ -223,7 +223,7 @@ def cmd_delegated(tl, args):
             del_list = sorted(to_list)
         nr = 0
         for delegate in del_list:
-            print("Delegated to {delegate}".format(delegate = cr.wrap_delegate(delegate)))
+            print("Delegated to {delegate}".format(delegate = cr.wrap_delegate(delegate, reset = True)))
             for item in sorted(to_list[delegate], cmp=tl.default_sort):
                 nr += 1
                 print(" ", cr.render(item))
@@ -250,7 +250,7 @@ def cmd_tasked(tl, args):
             ini_list = sorted(from_list)
         nr = 0
         for initiator in ini_list:
-            print("Tasks from {delegate}".format(delegate = cr.wrap_delegate(initiator)))
+            print("Tasks from {delegate}".format(delegate = cr.wrap_delegate(initiator, reset = True)))
             for item in sorted(from_list[initiator], cmp=tl.default_sort):
                 print(" ", cr.render(item))
                 nr += 1

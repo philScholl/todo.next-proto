@@ -109,9 +109,10 @@ class TodoList(object):
             for item in self.todolist:
                 try:
                     fp.write(u"{item_str}\n".format(item_str = item.text))
-                except Exception, ex:
+                except Exception:
                     logger.error(u"Error while writing {item_str} to todo file".format(item_str = repr(item.text)))
-    
+                    #raise
+
     
     def _append(self, item_str):
         """appends a todo item to the todo list

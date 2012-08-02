@@ -16,7 +16,7 @@ re_prio = re.compile(r"^\(([A-Z])\)", re.UNICODE)
 re_marker = re.compile(r"\(([^A-Z0-9])\)", re.UNICODE)
 re_context = re.compile(r"(?:^|\s)(@.+?)(?=$|\s)", re.UNICODE)
 re_project = re.compile(r"(?:^|\s)(\+.+?)(?=$|\s)", re.UNICODE)
-re_delegates = re.compile(r"(<{2}|>{2})(.*?)(?=$|\s)", re.UNICODE)
+re_delegates = re.compile(r"(<{2}|>{2})(\S+?)(?=$|\s)", re.UNICODE)
 re_urls = re.compile(r"(?:^|\s)((?:(?:ht|f)tp[s]?):.+?)(?=$|\s)")
 # key:value pairs with exception of URLs
 re_properties = re.compile(r"(\w+?):((?!\s|//).+?)(?=$|\s)", re.UNICODE)

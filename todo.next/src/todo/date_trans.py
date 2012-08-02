@@ -170,52 +170,86 @@ def to_date(date_string, reference_date = None, prospective = False):
     """
     if not date_string:
         return None
-    now = datetime.datetime.now()
+    now = datetime.datetime.now().replace(second=0, microsecond=0)
     if not reference_date:
         # reference date is today (without hours / min)
         reference_date = datetime.datetime.today()
     # normalize date string
     date_string = date_string.strip().lower()
+    date_part = time_part = None
+    parts = date_string.split("_", 1)
+    if len(parts) == 1:
+        date_part, time_part = parts[0], None
+    elif len(parts) == 2:
+        date_part, time_part = parts
+    else:
+        date_part, time_part = parts[0:2]
+    spec_date = None
     # first handle special cases:
-    if date_string in ["today", "td", ""]:
+    if date_part in ["now", "n", ""]:
+        # absolute: now (without replacing time)
+        spec_date = now
+    elif date_part in ["today", "td"]:
         # absolute: today (only change day, not time)
-        return now.replace(hour=reference_date.hour, minute=reference_date.minute)
-    elif date_string in ["yesterday", "yday", "yd"]:
+        spec_date = reference_date#.replace(hour=reference_date.hour, minute=reference_date.minute)
+    elif date_part in ["yesterday", "yday", "yd"]:
         # absolute: yesterday (only change day, not time)
-        return (now + datetime.timedelta(days=-1)).replace(hour=reference_date.hour, minute=reference_date.minute)
-    elif date_string in ["tomorrow", "tm"]:
+        spec_date = (reference_date + datetime.timedelta(days=-1)).replace(hour=reference_date.hour, minute=reference_date.minute)
+    elif date_part in ["tomorrow", "tm"]:
         # absolute: tomorrow (only change day, not time)
-        return (now + datetime.timedelta(days=1)).replace(hour=reference_date.hour, minute=reference_date.minute)
-    elif date_string in weekdays:
+        spec_date = (reference_date + datetime.timedelta(days=1)).replace(hour=reference_date.hour, minute=reference_date.minute)
+    elif date_part in ["bom", "bm"]:
+        # beginning of next month
+        spec_date = reference_date.replace(day=1, month=(reference_date.month + 1)% 12, year = reference_date.year + int((reference_date.month + 1) / 12), hour=0, minute=0) 
+    elif date_part in ["eom", "em"]:
+        # end of this month
+        spec_date = reference_date.replace(day=1, month=(reference_date.month + 1)% 12, year = reference_date.year + int((reference_date.month + 1) / 12), hour=0, minute=0) - datetime.timedelta(days=1)
+        # TODO: code eom date
+    elif date_part in weekdays:
         # a weekday was given
         if prospective:
-            pdate = get_date_by_weekday(date_string, now)
+            pdate = get_date_by_weekday(date_part, now)
         else:
-            pdate = get_date_by_weekday(date_string, reference_date)
-        return pdate
-    elif re_rel_date.match(date_string):
+            pdate = get_date_by_weekday(date_part, reference_date)
+        spec_date = pdate
+    elif re_rel_date.match(date_part):
         # a relative timespan like "-1y5w2d" (1 year, 5 weeks and 2 days)
         if prospective:
-            pdate = get_relative_date(date_string, now)
+            pdate = get_relative_date(date_part, now)
         else:
-            pdate = get_relative_date(date_string, reference_date)
-        return pdate
+            pdate = get_relative_date(date_part, reference_date)
+        spec_date = pdate
+        
+    # if time part is existing, update the date accordingly
+    if spec_date and time_part:
+        if USE_DATEUTIL:
+            # try to delegate parsing task to dateutil
+            temp_date = parse(time_part, default=reference_date)
+        else:
+            temp_date = datetime.datetime.strptime(time_part, "%H:%M")
+        print(temp_date)
+        spec_date = spec_date.replace(hour=temp_date.hour, minute=temp_date.minute)
+    
+    if spec_date:
+        return spec_date
+    
     # clean underscores
     if "_" in date_string:
         date_string = date_string.replace("_", " ")
 
     # try to parse custom date formats
-    for date_format in conf.date_formats:
-        try:
-            # try to parse the custom date formats
-            # FIXME: this does not correct shifting dates into the future as below!
-            pdate = datetime.datetime.strptime(date_string, date_format.replace("_", " "))
-            if pdate.year == 1900:
-                # no year given, the default year is taken
-                pdate = reference_date.replace(month=pdate.month, day=pdate.day, hour=pdate.hour, minute=pdate.minute) 
-            return pdate
-        except ValueError:
-            pass
+    if hasattr(conf, "date_formats"):
+        for date_format in conf.date_formats:
+            try:
+                # try to parse the custom date formats
+                # FIXME: this does not correct shifting dates into the future as below!
+                pdate = datetime.datetime.strptime(date_string, date_format.replace("_", " "))
+                if pdate.year == 1900:
+                    # no year given, the default year is taken
+                    pdate = reference_date.replace(month=pdate.month, day=pdate.day, hour=pdate.hour, minute=pdate.minute) 
+                return pdate
+            except ValueError:
+                pass
 
     try:
         if USE_DATEUTIL:

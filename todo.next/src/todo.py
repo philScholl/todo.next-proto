@@ -128,7 +128,8 @@ def create_config_wizard():
 
 if __name__ == '__main__':
     logger = logging.getLogger("todonext")
-    logger.setLevel(logging.WARNING)
+    logger.setLevel(logging.ERROR)
+    #logger.setLevel(logging.DEBUG)
     handler = logging.StreamHandler(sys.stderr)
     handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
     logger.addHandler(handler)
