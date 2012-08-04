@@ -122,7 +122,7 @@ def cmd_remove(tl, args):
         else:
             for item in item_list:
                 tl.remove_item(item)
-        msg = u"{nr} todo items ({item_ids}) have been removed.".format(nr = len(item_list), item_ids = ",".join(item_list))
+        msg = u"{nr} todo items ({item_ids}) have been removed.".format(nr = len(item_list), item_ids = ",".join([cr.wrap_id(item.tid, reset=True) for item in item_list]))
         suppress_if_quiet(msg, args)
         logger.info(msg)
 
@@ -1119,7 +1119,8 @@ def cmd_note(tl, args):
 # Aliases
 cmd_ls = cmd_list
 cmd_ed = cmd_edit
-cmd_rm = cmd_del = cmd_remove
+cmd_rm = cmd_remove
+cmd_due = cmd_delay
 cmd_ctx = cmd_context
 cmd_pr = cmd_project
 cmd_rep = cmd_report

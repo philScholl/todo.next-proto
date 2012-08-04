@@ -202,7 +202,7 @@ if __name__ == '__main__':
     parse_call = subparser.add_parser("call")
     parse_call.add_argument("item", type=to_unicode)
         
-    parse_delay = subparser.add_parser("delay")
+    parse_delay = subparser.add_parser("delay", aliases=("due",))
     parse_delay.add_argument("item", type=to_unicode, nargs="?")
     parse_delay.add_argument("date", type=to_unicode, nargs="?")
     parse_delay.add_argument("-f", "--force", action="store_true")
@@ -235,7 +235,7 @@ if __name__ == '__main__':
     parse_prio.add_argument("items", type=to_unicode, nargs="+")
     parse_prio.add_argument("priority", type=str)
     
-    parse_del = subparser.add_parser("remove", aliases=("rm", "del"))
+    parse_del = subparser.add_parser("remove", aliases=("rm",))
     parse_del.add_argument("items", type=to_unicode, nargs="+")
     parse_del.add_argument("-f", "--force", action="store_true")
 

@@ -1,9 +1,14 @@
 from distutils.core import setup
-import py2exe
+import py2exe, codecs, os
 
+# get description from README.rst
+with codecs.open(os.path.join("..", "README.rst"), "r", "utf-8") as fp:
+    long_description = fp.read()
+    
 setup(name = "todo.next",
-    version = "0.1",
-    description = "A command line todo list organizer enhancing the todo.txt format",
+    version = "0.4.7",
+    description = "A command line todo list organizer based on the todo.txt format",
+    long_description = long_description,
     author = "Philipp Scholl",
     author_email = "pscholl+todonext@gmail.com",
     url = "https://github.com/philScholl/todo.next-proto",
