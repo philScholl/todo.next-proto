@@ -1,7 +1,13 @@
 #!/usr/bin/env python
 """
+todo.next
+~~~~~~~~~
 
-.. see:: https://github.com/ginatrapani/todo.txt-cli/wiki/The-Todo.txt-Format
+This is a Command Line program allowing to manage a todo list.
+
+Further information can be found on https://github.com/philScholl/todo.next-proto/tree/master/todo.next .
+
+For the todo file syntax and rationale, see https://github.com/ginatrapani/todo.txt-cli/wiki/The-Todo.txt-Format .
 
 .. created: 22.06.2012
 .. moduleauthor:: Philipp Scholl
@@ -11,6 +17,7 @@ from actions import actions
 from todo.config import ConfigBorg
 from todo.todolist import TodoList
 from misc.cli_helpers import get_doc_help, get_doc_param, get_doc_description, get_colors, confirm_action
+from version import program_version
 
 import argparse, os, codecs, sys, logging
 import ConfigParser
@@ -176,6 +183,7 @@ if __name__ == '__main__':
     
     parser.add_argument("-n", "--no-colors", action="store_true", help="suppress colored output")
     parser.add_argument("-q", "--quiet", action="store_true", help="quiet flag")
+    parser.add_argument("-v", "--version", action="version", version="todo.next v. {version}".format(version = program_version))
     
     # -------------------------------------------------
     # Maintenance functionality
