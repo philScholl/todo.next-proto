@@ -168,8 +168,8 @@ class TodoList(object):
             # for generating different tids for same text
             salt = random.choice(ALPHABET)
             text = salt + text
-            # get hash
-            md5 = hashlib.new("md5", text)
+            # get hash from UTF-8 string
+            md5 = hashlib.new("md5", text.encode("utf-8"))
             # maximal number that needs to be reachable for maxlen characters
             max_nr = len(ALPHABET) ** maxlen
             # maximal size of the the hex string to be able to represent this number
