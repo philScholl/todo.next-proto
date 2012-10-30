@@ -32,7 +32,7 @@ suppress = created id blockedby blocks started
 col_context = - RED -
 col_project = - MAGENTA -
 col_delegate = BLACK YELLOW BRIGHT
-col_id = BLUE BLACK BRIGHT
+col_id = GREEN BLACK BRIGHT
 col_block = RED BLACK DIM
 col_marker = MAGENTA - BRIGHT
 # for whole items
