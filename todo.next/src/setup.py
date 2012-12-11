@@ -1,5 +1,5 @@
 from distutils.core import setup
-import py2exe, codecs, os
+import py2exe, codecs, os, glob
 
 # get description from README.rst
 with codecs.open(os.path.join("..", "README.rst"), "r", "utf-8") as fp:
@@ -12,8 +12,8 @@ setup(name = "todo.next",
     author = "Philipp Scholl",
     author_email = "pscholl+todonext@gmail.com",
     url = "https://github.com/philScholl/todo.next-proto",
-    packages = ["actions", "misc", "todo"],
-    data_files = {"": "*.template"},
+    packages = ["actions", "misc", "todo", "."],
+    data_files = ["config.template", os.path.join("..", "README.rst")],
     requires = ["dateutil(<2.0)", "colorama"],
     scripts = ["todo.py",],
     console = ["todo.py",],
@@ -28,6 +28,15 @@ setup(name = "todo.next",
         "Operating System :: POSIX :: Linux",
         "Operating System :: Unix",
         "Programming Language :: Python :: 2.7",
-        "Topic :: Utilities"
+        "Topic :: Utilities",
         ],
+    options = {
+        "py2exe": {
+            "bundle_files": 1,
+            "excludes": ["_ssl", "_socket", "email", "bz2", "select"],
+            "unbuffered": True,
+            "dll_excludes": ["POWRPROF.dll", "API-MS-*"],
+            "compressed": True,
+        },
+        },
     )
