@@ -14,12 +14,7 @@ from todo.date_trans import shorten_date
 from todo.config import ConfigBorg
 
 from colorama import init, deinit, Fore, Back, Style
-import re, tempfile, subprocess, os, codecs, time, urlparse, sys
-
-# regex for finding parameters in docstring
-re_docstring_param = re.compile("^\s*\*(.+?)\:(.+?)$", re.UNICODE | re.MULTILINE)
-# regex for finding description
-re_docstring_desc = re.compile("^\s*\:description\:(.+?)^\s*$", re.UNICODE | re.MULTILINE | re.DOTALL)
+import re, tempfile, subprocess, os, codecs, time, urlparse
 
 str_re_replace_prop = r"\b({prop_name}:[^\s]+?)(?=$|\s)"
 prop_replace_regex_cache = {}
@@ -34,16 +29,18 @@ def get_regex_for_replacing_prop(prop):
 
 
 def get_colors(col_string):
+    """ returns shell color string as decoded from colorama color names
+    
+    :param col_string: a color string like "BLACK YELLOW -"
+    :type col_string: str
+    :return: shell color string
+    :rtype: str
+    """
     parts = col_string.upper().split()
-    f, b, s = Fore.WHITE, Back.BLACK, Style.NORMAL # @UndefinedVariable
-    try:
-        f = f if parts[0] == "-" else getattr(Fore, parts[0])
-        b = b if parts[1] == "-" else getattr(Back, parts[1])
-        s = s if parts[2] == "-" else getattr(Style, parts[2])
-    except:
-        pass 
-            
-    return "".join((f, b, s))
+    return "".join(
+        [getattr(Fore, parts[0], Fore.WHITE), # @UndefinedVariable
+        getattr(Back, parts[1], Back.BLACK), # @UndefinedVariable
+        getattr(Style, parts[2], Style.NORMAL)]) # @UndefinedVariable
 
 
 def open_editor(filename):

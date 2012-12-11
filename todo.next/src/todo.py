@@ -38,7 +38,7 @@ class AliasedSubParsersAction(argparse._SubParsersAction):
                 dest += " ({aliases})".format(aliases = ",".join(aliases))
             sup = super(AliasedSubParsersAction._AliasedPseudoAction, self)
             sup.__init__(option_strings=[], dest=dest, help=cmd_help)
-            
+
 
     def add_parser(self, name, **kwargs):
         if 'aliases' in kwargs:
@@ -47,6 +47,7 @@ class AliasedSubParsersAction(argparse._SubParsersAction):
         else:
             aliases = []
         
+        # get the function object of this action
         action_func = getattr(actions, "cmd_{cmd_name}".format(cmd_name = name))
         # create help and description strings for parser
         if "help" not in kwargs:

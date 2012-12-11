@@ -107,7 +107,8 @@ Maintaining todo items
 :attach/detach:         attaches / detaches a file to / from a given todo item
 :block/unblock:         manages dependencies, e.g. whether you can start working on a todo item only after having finished another item
 :delay (due):           delays the due date of one or more todo items
-:done (x)/reopen:       sets the status of one or more todo items to 'done' / resets the 'done' status
+:done (x):              sets the status of one or more todo items to 'done'
+:reopen:                resets the status of a 'done' item
 :edit (ed):             allows editing a given todo item
 :open:                  opens either an URL, a file or mail program depending on information that is attached to the todo item
 :prio:                  assigns given items a priority (absolute like 'A' or relative like '-') or removes it
@@ -119,6 +120,7 @@ Listing todo items
 ------------------
 
 :agenda (ag):           displays an agenda for a given date
+:age:                   displays all todo items sorted by date
 :context (ctx):         lists all todo items per context
 :delegated:             shows all todo items that have been delegated and wait for input
 :list (ls):             lists all items that match the given expression
@@ -157,6 +159,8 @@ Other ``todo.txt`` Resources
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 * The original `todo.txt`_ web site links a plethora of resources and examples. Especially the "Why text-based?" post is good.
+* `Taskwarrior`_, a project that provides pretty similar functionality to |todo|.
 
 .. _`todo.txt`: https://github.com/ginatrapani/todo.txt-cli/wiki/The-Todo.txt-Format
+.. _`Taskwarrior`: http://taskwarrior.org/projects/taskwarrior/
 .. |todo| replace:: ``todo.next``
