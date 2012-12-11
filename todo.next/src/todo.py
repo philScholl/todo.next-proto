@@ -16,7 +16,7 @@ from __future__ import print_function
 from actions import actions
 from todo.config import ConfigBorg
 from todo.todolist import TodoList
-from misc.cli_helpers import get_doc_help, get_doc_param, get_doc_description, get_colors, confirm_action
+from misc.cli_helpers import get_colors, confirm_action
 from version import program_version
 
 import argparse, os, codecs, sys, logging
@@ -47,11 +47,12 @@ class AliasedSubParsersAction(argparse._SubParsersAction):
         else:
             aliases = []
         
+        action_func = getattr(actions, "cmd_{cmd_name}".format(cmd_name = name))
         # create help and description strings for parser
         if "help" not in kwargs:
-            kwargs["help"] = get_doc_help(getattr(actions, "cmd_{cmd_name}".format(cmd_name = name)))
+            kwargs["help"] = getattr(action_func, "__help", None)
         if "description" not in kwargs:
-            kwargs["description"] = get_doc_description(getattr(actions, "cmd_{cmd_name}".format(cmd_name = name)))
+            kwargs["description"] = getattr(action_func, "__description", None)
 
         parser = super(AliasedSubParsersAction, self).add_parser(name, **kwargs)
         # save back the add_argument method
@@ -67,7 +68,7 @@ class AliasedSubParsersAction(argparse._SubParsersAction):
                     norm_name = pname[0]
                 else:
                     norm_name = pname[1].lstrip("-")
-                kwargs["help"] = get_doc_param(getattr(actions, "cmd_{cmd_name}".format(cmd_name = name)), norm_name)
+                kwargs["help"] = getattr(action_func, "__params", {}).get(norm_name, None)
             if len(pname) == 1:
                 parser._add_argument(pname[0], **kwargs)
             else:
@@ -193,6 +194,10 @@ if __name__ == '__main__':
     
     parse_add = subparser.add_parser("add")
     parse_add.add_argument("text", type=to_unicode, nargs="*")
+    
+    parse_age = subparser.add_parser("age")
+    parse_age.add_argument("desc", type=bool, default=False, nargs="?")
+    parse_age.add_argument("-a", "--all", action="store_true")
     
     parse_attach = subparser.add_parser("attach")
     parse_attach.add_argument("item", type=to_unicode)

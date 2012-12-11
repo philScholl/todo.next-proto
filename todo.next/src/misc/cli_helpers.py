@@ -45,60 +45,6 @@ def get_colors(col_string):
             
     return "".join((f, b, s))
 
-def get_doc_description(func):
-    """returns the first line and the lines prepended with ``:description:`` followed by an empty line
-    
-    :param func: a ``cmd_`` function
-    :type func: callable
-    :return: the first line + description from the docstring
-    :rtype: str    
-    """
-    first_line = get_doc_help(func).strip()
-    if not first_line.endswith("."):
-        first_line += u". "
-    description = u""
-    for description in re_docstring_desc.findall(func.__doc__):
-        break
-    
-    return first_line + description.strip()
-    #pass
-    
-    
-def get_doc_help(func):
-    """returns the first line of the function's docstring as a help string
-    
-    :param func: a ``cmd_`` function
-    :type func: callable
-    :return: the first line of the docstring
-    :rtype: str
-    """
-    try:
-        return func.__doc__.split(u"\n")[0].strip()
-    except:
-        return u"n/a"
-
-
-def get_doc_param(func, param_name):
-    """returns the parameter help from a function's docstring
-    
-    The parameter help string is searched in the docstring by looking for a line following the template
-    ''* {param_name}:{description}``
-    
-    :param func: a ``cmd_`` function
-    :type func: callable
-    :param param_name: a parameter name
-    :type param_name: str
-    :return: the first line of the docstring
-    :rtype: str
-    """
-    try:
-        for param, desc in re_docstring_param.findall(func.__doc__):
-            if param.strip() == param_name:
-                return desc.strip()
-        return u"n/a"
-    except:
-        return u"n/a"
-
 
 def open_editor(filename):
     """opens a text editor with the specified filename

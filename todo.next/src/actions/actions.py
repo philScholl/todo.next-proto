@@ -10,6 +10,7 @@ Contains all actions that can be executed by ``todo.next``
 from __future__ import print_function
 
 from misc.cli_helpers import ColorRenderer, get_editor_input, open_editor, confirm_action, suppress_if_quiet
+from misc.docdecorator import doc_description
 from todo.date_trans import to_date, is_same_day, from_date
 from todo.parsers import re_urls
 from todo.config import ConfigBorg
@@ -21,6 +22,8 @@ from itertools import groupby
 import webbrowser, codecs
 import logging
 
+from operator import attrgetter
+
 # configuration
 conf = ConfigBorg()
 # logger
@@ -31,16 +34,15 @@ re_prio = re.compile("[xA-Z+-]", re.UNICODE)
 # regex for replacing archive scheme variables with "*"
 re_replace_archive_vars = re.compile("%\D", re.UNICODE)
 
+
+@doc_description("lists all items that match the given expression", 
+    "If no search query is given, all items are listed.", 
+    {"search_string": "a search string",
+    "all": "if given, also the done todo and report items are shown",
+    "regex": "if given, the search string is interpreted as a regular expression",
+    "ci": "if given, the search string is interpreted as case insensitive"})
 def cmd_list(tl, args):
     """lists all items that match the given expression
-    
-    :description: If no search query is given, all items are listed.
-    
-    Required fields of :param:`args`:
-    * search_string: a search string
-    * all: if given, also the done todo and report items are shown
-    * regex: if given, the search string is interpreted as a regular expression
-    * ci: if given, the search string is interpreted as case insensitive
     """
     with ColorRenderer() as cr:
         # case insensitivity
@@ -68,15 +70,12 @@ def cmd_list(tl, args):
                 nr += 1 
                 print(" ", cr.render(item))
         suppress_if_quiet(u"{nr_items} todo items displayed.".format(nr_items = nr), args)
-        
 
+@doc_description("adds a new todo item to the todo list", 
+    "The source of the todo item can either be the command line or an editor.", 
+    {"text": "the text of the todo item to add"})
 def cmd_add(tl, args):
     """adds a new todo item to the todo list
-        
-    :description: The source of the todo item can either be the command line or an editor.
-    
-    Required fields of :param:`args`:
-    * text: the text of the todo item to add
     """
     with ColorRenderer() as cr:
         if not args.text:
@@ -94,13 +93,11 @@ def cmd_add(tl, args):
         logger.debug(msg)
         item.check()
 
-
+@doc_description("removes one or more items from the todo list", None, 
+    {"items": "the index numbers or IDs of the items to remove",
+    "force": "if given, confirmation is not requested"})
 def cmd_remove(tl, args):
     """removes one or more items from the todo list
-    
-    Required fields of :param:`args`:
-    * items: the index number of the items to remove
-    * force: if given, confirmation is not requested
     """
     with ColorRenderer() as cr:
         item_list = tl.get_items_by_index_list(args.items)
@@ -126,12 +123,10 @@ def cmd_remove(tl, args):
         suppress_if_quiet(msg, args)
         logger.info(msg)
 
-
+@doc_description("sets the status of one or more todo items to 'done'", None, 
+    {"items": "the index numbers or IDs of the items to set to 'done'"})
 def cmd_done(tl, args):
     """sets the status of one or more todo items to 'done'
-    
-    Required fields of :param:`args`:
-    * items: the index number of the items to set to 'done'
     """
     with ColorRenderer() as cr:
         now = datetime.datetime.now()
@@ -157,12 +152,10 @@ def cmd_done(tl, args):
 
             suppress_if_quiet(u"  {item}".format(item = cr.render(item)), args)
 
-
+@doc_description("reopens one or more items marked as 'done'", None, 
+    {"items": "the index numbers or IDs of the items to reopen"})
 def cmd_reopen(tl, args):
     """reopens one or more items marked as 'done'
-    
-    Required fields of :param:`args`:
-    * items: the index numbers of the items to reopen
     """
     with ColorRenderer() as cr:
         suppress_if_quiet(u"Set the following todo items to open again:", args)
@@ -171,15 +164,13 @@ def cmd_reopen(tl, args):
             tl.reindex()
             suppress_if_quiet(u"  {item}".format(item = cr.render(item)), args)
 
-
+@doc_description("allows editing a given todo item", 
+    "This action will open an editor. "
+        "If you're done editing, save the file and close the editor or cancel "
+        "editing by pressing ``Ctrl+C``.", 
+    {"item": "the index number or ID of the item to edit"})
 def cmd_edit(tl, args):
     """allows editing a given todo item
-    
-    :description: This action will open an editor. 
-        If you're done editing, save the file and close the editor or cancel
-        editing by pressing ``Ctrl+C``.
-    
-    * item: the index number of the item to edit
     """
     with ColorRenderer() as cr:
         if not args.item:
@@ -202,13 +193,12 @@ def cmd_edit(tl, args):
             # editing has been aborted
             pass
 
-
+@doc_description("shows all todo items that have been delegated and wait for input", 
+    None, 
+    {"delegate": "for filtering the name used for denoting a delegate",
+    "all": "if given, also the done todos are shown"})
 def cmd_delegated(tl, args):
     """shows all todo items that have been delegated and wait for input
-    
-    Required fields of :param:`args`:
-    * delegate: for filtering the name used for denoting a delegate
-    * all: if given, also the done todos are shown
     """
     with ColorRenderer() as cr:
         to_list = collections.defaultdict(list)
@@ -229,13 +219,11 @@ def cmd_delegated(tl, args):
                 print(" ", cr.render(item))
         suppress_if_quiet(u"{nr} todo items displayed.".format(nr = nr), args)
 
-
+@doc_description("shows all open todo items that I am tasked with", None, 
+    {"initiator": "for filtering the name used for denoting the initiator",
+    "all": "if given, also the done todos are shown"})
 def cmd_tasked(tl, args):
     """shows all open todo items that I am tasked with
-    
-    Required fields of :param:`args`:
-    * initiator: for filtering the name used for denoting the initiator
-    * all: if given, also the done todos are shown
     """
     with ColorRenderer() as cr:
         from_list = collections.defaultdict(list)
@@ -255,12 +243,10 @@ def cmd_tasked(tl, args):
                 print(" ", cr.render(item))
                 nr += 1
         suppress_if_quiet(u"{nr} todo items displayed.".format(nr = nr), args)
-            
 
+@doc_description("shows all todo items that are overdue")
 def cmd_overdue(tl, args):
     """shows all todo items that are overdue
-    
-    Nor :param:`args` arguments are required.
     """
     with ColorRenderer() as cr:
         print("Overdue todo items:")
@@ -270,17 +256,14 @@ def cmd_overdue(tl, args):
             nr += 1
         suppress_if_quiet(u"{nr} todo items displayed.".format(nr = nr), args)
 
-
+@doc_description("shows a daily report of all done and report items", 
+    "This command lists all done and report items for a given date "
+        "or date range. If no arguments are given, the items of the last 7 days are "
+        "displayed.", 
+    {"from_date": "either a date or a string like 'tomorrow' or '*'",
+    "to_date": "either a date or a string like 'tomorrow'"})
 def cmd_report(tl, args):
     """shows a daily report of all done and report items
-    
-    :description: This command lists all done and report items for a given date
-        or date range. If no arguments are given, the items of the last 7 days are
-        displayed. 
-    
-    Required fields of :param:`args`:
-    * from_date: either a date or a string like 'tomorrow' or '*'
-    * to_date: either a date or a string like 'tomorrow'
     """
     with ColorRenderer() as cr:
         # default date used when no done date is specified
@@ -387,12 +370,11 @@ def cmd_report(tl, args):
         
         suppress_if_quiet(u"{nr} todo items displayed.".format(nr = nr), args)
 
-
+@doc_description("displays an agenda for a given date",
+    None, 
+    {"date": "either a date or a string like 'tomorrow' or '*', default 'today'"})
 def cmd_agenda(tl, args):
     """displays an agenda for a given date
-    
-    Required fields of :param:`args`:
-    * date: either a date or a string like 'tomorrow' or '*', default 'today'
     """
     with ColorRenderer() as cr:
         agenda_items = []
@@ -427,21 +409,18 @@ def cmd_agenda(tl, args):
                 print(" ", cr.render(item))
         suppress_if_quiet(u"{nr} todo items displayed.".format(nr = len(agenda_items)), args)
 
-
+@doc_description("open todo.next configuration in editor")
 def cmd_config(tl, args): #@UnusedVariable
     """open todo.next configuration in editor
-    
-    Required fields of :param:`args`:
     """
     open_editor(conf.config_file)
 
-
+@doc_description("assigns given items a priority (absolute like 'A' or relative like '-')", 
+    None, 
+    {"items": "the index numbers of the items to (re)prioritize",
+    "priority": "the new priority ('A'..'Z' or '+'/'-') or 'x' (for removing)"})
 def cmd_prio(tl, args):
     """assigns given items a priority (absolute like 'A' or relative like '-')
-    
-    Required fields of :param:`args`:
-    * items: the index numbers of the items to (re)prioritize
-    * priority: the new priority ('A'..'Z' or '+'/'-') or 'x' (for removing)
     """
     with ColorRenderer() as cr:
         prio_items = tl.get_items_by_index_list(args.items)
@@ -482,11 +461,9 @@ def cmd_prio(tl, args):
                 tl.set_priority(item, new_prio)
                 suppress_if_quiet(u"  {item}".format(item = cr.render(item)), args)
                 
-                
+@doc_description("displays some simple statistics about your todo list")
 def cmd_stats(tl, args): #@UnusedVariable
     """displays some simple statistics about your todo list
-    
-    Required fields of :param:`args`:
     """
     # write # open / # done / # prioritized / # overdue items
     counter = collections.defaultdict(int)
@@ -516,12 +493,11 @@ def cmd_stats(tl, args): #@UnusedVariable
         print(cr.wrap_done(u"Done items           : {stat}".format(stat = counter["done"])))
         print(cr.wrap_report(u"Report items         : {stat}".format(stat = counter["report"])))
 
-
+@doc_description("opens either an URL, a file or mail program depending on information that is attached to the todo item",
+    None, 
+    {"item": "the index number of the item that has either an URL or file attached",})
 def cmd_call(tl, args):
     """opens either an URL, a file or mail program depending on information that is attached to the todo item
-    
-    Required fields of :param:`args`:
-    * item: the index number of the item that has either an URL or file attached
     """
     with ColorRenderer() as cr:
         item = tl.get_item_by_index(args.item)
@@ -563,14 +539,13 @@ def cmd_call(tl, args):
             print(u"No files / urls / email addresses found in task:")
             print(u" ", cr.render(item))
 
-
+@doc_description("lists all todo items per project",
+    None,
+    {"name": "the name of the project to display",
+     "all": "if given, also the done todo items are displayed",
+     "ci": "if given, the project name is interpreted as case insensitive"})
 def cmd_project(tl, args):
     """lists all todo items per project
-    
-    Required fields of :param:`args`:
-    * name: the name of the project to display
-    * all: if given, also the done todo items are displayed
-    * ci: if given, the project name is interpreted as case insensitive
     """
     # lists todo items per project (like list, only with internal grouping)
     with ColorRenderer() as cr:
@@ -599,14 +574,13 @@ def cmd_project(tl, args):
                 print(" ", cr.render(item))
         suppress_if_quiet(u"{nr} todo items displayed.".format(nr = nr), args)
             
-
+@doc_description("lists all todo items per context",
+    None,
+    {"name": "the name of the context to display",
+     "all": "if given, also the done todo items are displayed",
+     "ci": "if given, the context name is interpreted as case insensitive"})
 def cmd_context(tl, args):
     """lists all todo items per context
-    
-    Required fields of :param:`args`:
-    * name: the name of the context to display
-    * all: if given, also the done todo items are displayed
-    * ci: if given, the context name is interpreted as case insensitive
     """
     # lists todo items per context (like list, only with internal grouping)
     with ColorRenderer() as cr:
@@ -635,12 +609,11 @@ def cmd_context(tl, args):
                 nr += 1 
         suppress_if_quiet(u"{nr} todo items displayed.".format(nr = nr), args)
 
-
+@doc_description("backups the current todo file to a timestamped file",
+    None, 
+    {"filename": "the name of the backup file [optional]",})
 def cmd_backup(tl, args): #@UnusedVariable
     """backups the current todo file to a timestamped file
-    
-    Required fields of :param:`args`:
-    * filename: the name of the backup file [optional]
     """
     template = os.path.basename(conf.todo_file)
     filename = datetime.datetime.now().strftime("%Y-%m-%d_%H%M_" + template)
@@ -668,14 +641,11 @@ def cmd_backup(tl, args): #@UnusedVariable
             dst.write(src.read())
     suppress_if_quiet(u"Successfully backed up todo file.", args)
 
-
+@doc_description("archives all non-current todo items and removes them from todo list", 
+    "This command moves all done / report items to other files (schema is specified in "
+    "configuration) and removes them from the todo file.")
 def cmd_archive(tl, args):
     """archives all non-current todo items and removes them from todo list
-    
-    moves all done / report items to other files (schema is specified in
-    configuration) and removes them from the todo file.
-    
-    Required fields of :param:`args`:
     """
     # base directory of todo file
     base_dir = os.path.dirname(conf.todo_file)
@@ -717,14 +687,13 @@ def cmd_archive(tl, args):
     
     suppress_if_quiet(u"Successfully archived {nr} todo items.".format(nr = nr_archived), args)
 
-
+@doc_description("delays the due date of one or more todo items",
+    None,
+    {"item": "the index number of the item to delay",
+     "date": "either a date or a string like 'tomorrow', default '1d' (delays for 1 day)",
+     "force": "if given, confirmation is not requested"})
 def cmd_delay(tl, args):
     """delays the due date of one or more todo items
-    
-    Required fields of :param:`args`:
-    * item: the index number of the item to delay
-    * date: either a date or a string like 'tomorrow', default '1d' (delays for 1 day)
-    * force: if given, confirmation is not requested
     """
     with ColorRenderer() as cr:
         item = tl.get_item_by_index(args.item)
@@ -754,14 +723,13 @@ def cmd_delay(tl, args):
                 tl.replace_or_add_prop(item, conf.DUE, from_date(new_date), new_date)
         suppress_if_quiet(u"  {item}".format(item = cr.render(item)), args)
 
-
+@doc_description("lists all current and archived todo items that match the search string",
+    None,
+    {"search_string": "a search string",
+     "regex": "if given, the search string is interpreted as a regular expression",
+     "ci": "if given, the search string is interpreted as case insensitive"})
 def cmd_search(tl, args):
     """lists all current and archived todo items that match the search string
-    
-    Required fields of :param:`args`:
-    * search_string: a search string
-    * regex: if given, the search string is interpreted as a regular expression
-    * ci: if given, the search string is interpreted as case insensitive
     """
     with ColorRenderer() as cr:
         # case insensitivity
@@ -813,13 +781,12 @@ def cmd_search(tl, args):
                 print(" ", cr.render(item[1]))
         suppress_if_quiet(u"{nr} matching todo items found".format(nr = len(all_matches)), args)
         
-        
+@doc_description("attaches a file to the given todo item",
+    None,
+    {"item": "the index number of the item to which something should be attached",
+     "location": "either a (relative) file name or a (fully qualified) URL"})
 def cmd_attach(tl, args):
     """attaches a file to the given todo item
-    
-    Required fields of :param:`args`:
-    * item: the index number of the item to which something should be attached
-    * location: either a (relative) file name or a (fully qualified) URL
     """
     with ColorRenderer() as cr:
         item = tl.get_item_by_index(args.item)
@@ -851,12 +818,11 @@ def cmd_attach(tl, args):
             tl.reindex()
         suppress_if_quiet(u"  {item}".format(item = cr.render(item)), args)
 
-
+@doc_description("detaches a file from a given todo item.",
+    None,
+    {"item": "the index number of the item from which something should be detached"})
 def cmd_detach(tl, args):
     """detaches a file from a given todo item
-    
-    Required fields of :param:`args`:
-    * item: the index number of the item from which something should be detached
     """
     with ColorRenderer() as cr:
         item = tl.get_item_by_index(args.item)
@@ -893,11 +859,9 @@ def cmd_detach(tl, args):
         suppress_if_quiet(u"  {item}".format(item = cr.render(item)), args)
         tl.dirty = True
 
-
+@doc_description("checks the todo list for syntactical validity.")
 def cmd_check(tl, args): #@UnusedVariable
     """checks the todo list for syntactical validity
-    
-    Required fields of :param:`args`:
     """
     with ColorRenderer() as cr:
         nr = 0
@@ -908,16 +872,13 @@ def cmd_check(tl, args): #@UnusedVariable
                 print(u" ", warning)
         print(u"{nr} warning(s) have been found".format(nr = (nr or "No")))
 
-
+@doc_description("marks the todo item as done and reenters it after the specified time",
+    "This command is for frequently occurring todo items, like e.g. "
+        "a bi-weekly status report.",
+    {"item": "the index number of the item from which something should be detached",
+    "date": "the relative or absolute date when the item is due again",})
 def cmd_repeat(tl, args):
     """marks the todo item as done and reenters it after the specified time
-    
-    :description: This command is for frequently occurring todo items, like e.g. a bi-weekly
-                  status report.
-    
-    Required fields of :param:`args`:
-    * item: the index number of the item from which something should be detached
-    * date: the relative or absolute date when the item is due again 
     """
     with ColorRenderer() as cr:
         item = tl.get_item_by_index(args.item)
@@ -932,31 +893,25 @@ def cmd_repeat(tl, args):
         item.set_to_done()
         suppress_if_quiet(u"Marked todo item as 'done' and reinserted:\n  {item}".format(item = cr.render(new_item)), args)
         
-
+@doc_description("lists all todo items (current and done) matching the given expression, equivalent to 'list --all'",
+    "If no search query is given, all items are listed.",
+    {"search_string": "a search string",
+    "regex": "if given, the search string is interpreted as a regular expression",
+    "ci": "if given, the search string is interpreted as case insensitive"})
 def cmd_lsa(tl, args):
     """lists all todo items (current and done) matching the given expression, equivalent to "list --all"
-    
-    :description: If no search query is given, all items are listed.
-    
-    Required fields of :param:`args`:
-    * search_string: a search string
-    * regex: if given, the search string is interpreted as a regular expression
-    * ci: if given, the search string is interpreted as case insensitive
     """
     args.all = True
     cmd_list(tl, args)
 
-
+@doc_description("lists all items with markers (e.g. '(!)')",
+    "Markers can be used to denote a todo item classification, e.g. "
+        "an open question or an information ('(i)'). If no marker parameter "
+        "is given, all found markers are listed.",
+    {"marker": "a single character that denotes the type of the marker to list",
+    "all": "if given, also the done todo and report items are shown"})
 def cmd_mark(tl, args):
     """lists all items with markers (e.g. '(!)')
-    
-    :description: Markers can be used to denote a todo item classification, e.g.
-        an open question or an information ('(i)'). If no marker parameter
-        is given, all found markers are listed.
-    
-    Required fields of :param:`args`:
-    * marker: a single character that denotes the type of the marker to list.
-    * all: if given, also the done todo and report items are shown
     """
     with ColorRenderer() as cr:
         marker_dict = collections.defaultdict(list)
@@ -979,15 +934,13 @@ def cmd_mark(tl, args):
         suppress_if_quiet(u"{nr} todo items displayed.".format(nr = nr), args)
         
 
+@doc_description("sets the 'started' property of an item or lists all started items.",
+    "If a todo item is picked to be worked on, this command "
+        "allows setting the started time. Thus, the time it took to work "
+        "on that item can be derived from 'started' and 'done' time.",
+    {"item": "the index number or id of the todo item which is started",})
 def cmd_start(tl, args):
     """sets the 'started' property of an item or lists all started items.
-    
-    :description: If a todo item is picked to be worked on, this command
-        allows setting the started time. Thus, the time it took to work
-        on that item can be derived from 'started' and 'done' time.
-    
-    Required fields of :param:`args`:
-    * item: the index number or id of the todo item which is started
     """
     with ColorRenderer() as cr:
         if not args.item:
@@ -1011,14 +964,12 @@ def cmd_start(tl, args):
             tl.replace_or_add_prop(item, conf.STARTED, from_date(now), now)
         
 
+@doc_description("stops working on a todo item without setting it to 'done'",
+    "If a todo item is paused, the 'duration' property is " 
+        "updated and the 'started' property is removed.",
+    {"item": "the index number or id of the todo item which should be stopped",})
 def cmd_stop(tl, args):
-    """stops working on a todo item without setting it to 'done'.
-    
-    :description: If a todo item is paused, the 'duration' property is 
-        updated and the 'started' property is removed.
-    
-    Required fields of :param:`args`:
-    * item: the index number or id of the todo item which should be stopped
+    """stops working on a todo item without setting it to 'done'
     """
     with ColorRenderer() as cr:
         item = tl.get_item_by_index(args.item)
@@ -1046,16 +997,14 @@ def cmd_stop(tl, args):
         suppress_if_quiet(u"You have worked {dur} minutes on:\n  {item}".format(dur = duration, item = cr.render(item)), args)
         
 
+@doc_description("setting the first item as a pre-requisite to the second item",
+    "This allows to create dependencies between todo items. One item "
+        "can be set as a pre-requisite to another todo item. This command is only "
+        "usable with id support activated.",
+    {"item": "the id of the todo item which is a pre-requisite",
+    "blocked": "the id of the todo item which should be blocked"})
 def cmd_block(tl, args):
     """setting the first item as a pre-requisite to the second item
-    
-    :description: This allows to create dependencies between todo items. One item
-        can be set as a pre-requisite to another todo item. This command is only
-        usable with id support activated.
-    
-    Required fields of :param:`args`:
-    * item: the id of the todo item which is a pre-requisite
-    * blocked: the id of the todo item which should be blocked
     """
     with ColorRenderer() as cr:
         if not conf.id_support:
@@ -1072,16 +1021,14 @@ def cmd_block(tl, args):
         suppress_if_quiet(u"  {item}".format(item = cr.render(blocked)), args)
          
 
+@doc_description("unsetting the first item as a pre-requisite to the second item",
+    "This allows to remove dependencies between todo items. One item "
+        "can be removed as a pre-requisite from another todo item. This command is only "
+        "usable with id support activated.",
+    {"item": "the id of the todo item which is a pre-requisite",
+    "blocked": "the id of the todo item which is blocked"})
 def cmd_unblock(tl, args):
     """unsetting the first item as a pre-requisite to the second item
-    
-    :description: This allows to remove dependencies between todo items. One item
-        can be removed as a pre-requisite from another todo item. This command is only
-        usable with id support activated.
-    
-    Required fields of :param:`args`:
-    * item: the id of the todo item which is a pre-requisite
-    * blocked: the id of the todo item which is blocked
     """
     with ColorRenderer() as cr:
         if not conf.id_support:
@@ -1099,14 +1046,11 @@ def cmd_unblock(tl, args):
         suppress_if_quiet(u"  {item}".format(item = cr.render(blocked)), args)
 
 
+@doc_description("adding or editing a note to a todo item",
+    "Opens a text file that contains further notes for a specific item.",
+    {"item": "the id of the todo item that should be annotated",})
 def cmd_note(tl, args):
     """adding or editing a note to a todo item
-    
-    :description: Opens a text file that contains further notes for a specific
-        item.
-    
-    Required fields of :param:`args`:
-    * item: the id of the todo item that should be annotated
     """
     with ColorRenderer() as cr:
         if not conf.id_support:
@@ -1114,6 +1058,32 @@ def cmd_note(tl, args):
             return
         item = tl.get_item_by_index(args.item)
         # TODO: write me
+    
+
+
+@doc_description("lists items sorted by age (based on the 'created' property)",
+    None,
+    {"all": "if given, also done todo items are displayed",
+    "desc": "if given, sorting is done descending with newest items first"})
+def cmd_age(tl, args):
+    """listing items sorted by age (based on ``created`` property)
+    """
+    with ColorRenderer() as cr:
+        nr = 0
+        itemlist = []
+        for item in tl.list_items():
+            if not item.get_created_date():
+                # item does not have a creation date
+                continue
+            if (not args.all) and (item.is_report or item.done):
+                # if --all is not set, report and done items are suppressed
+                continue
+            itemlist.append(item)
+            nr += 1
+        for item in sorted(itemlist, key=attrgetter("created_date"), reverse=args.desc):             
+            print(" ", item.get_created_date().strftime("%Y-%m-%d %H:%M"), cr.render(item))
+        suppress_if_quiet(u"{nr_items} todo items displayed.".format(nr_items = nr), args)
+        print(cmd_age.__description, cmd_age.__params)
     
 
 # Aliases
